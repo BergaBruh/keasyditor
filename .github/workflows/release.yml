@@ -1,8 +1,9 @@
 name: Release
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'v*'
 
 jobs:
   package:
@@ -22,7 +23,7 @@ jobs:
 
       - name: Extract version from tag
         env:
-          TAG: ${{ github.event.release.tag_name }}
+          TAG: ${{ github.ref_name }}
         run: echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
 
       - name: Set up Docker Buildx
@@ -38,8 +39,10 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.distro }}
           cache-to: type=gha,scope=${{ matrix.distro }},mode=max
 
-      - name: Upload to release
+      - name: Create GitHub Release and upload packages
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ github.event.release.tag_name }}
-        run: gh release upload "$TAG" build/packages/* --clobber
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" --title "$TAG" --generate-notes || true
+          gh release upload "$TAG" build/packages/* --clobber

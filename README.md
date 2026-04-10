@@ -104,13 +104,13 @@ Docker with BuildKit is required for package builds (Docker 23+ has it by defaul
 
 ## Contributing
 
-Commits follow [Conventional Commits](https://www.conventionalcommits.org/):
+Pull requests are welcome. To create a release:
 
-| Prefix | Effect |
-|---|---|
-| `feat: ...` | minor version bump, appears in changelog |
-| `fix: ...` | patch version bump, appears in changelog |
-| `chore:`, `docs:`, `style:` | no release |
-| `feat!:` or `BREAKING CHANGE` | major version bump |
+1. Update the version in `crates/keasyditor/Cargo.toml`
+2. Commit and push to `main`
+3. Push a tag — packages are built and a GitHub Release is created automatically:
 
-Releases are created automatically by [release-please](https://github.com/googleapis/release-please) when changes are merged into `main`.
+```bash
+git tag v0.2.0
+git push origin v0.2.0
+```
