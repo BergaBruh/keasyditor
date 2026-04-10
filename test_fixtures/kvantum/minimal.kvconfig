@@ -1,0 +1,11 @@
+[%General]
+author=Test
+composite=true
+
+[GeneralColors]
+window.color=#000000
+text.color=#ffffff
+
+[PanelButtonCommand]
+frame=true
+text.normal.color=#cccccc

@@ -1,7 +1,6 @@
 # Rust / Cargo
 /target/
 Cargo.lock
-/test_fixtures/
 
 # Claude Code instructions (local only, not for version control)
 CLAUDE.md
