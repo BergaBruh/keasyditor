@@ -19,6 +19,7 @@ depends=(
     'libgl'
     'xdg-desktop-portal'
 )
+options=(!debug)
 source=()
 sha256sums=()
 

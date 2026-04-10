@@ -62,6 +62,9 @@ COPY --from=builder --chown=builder:builder \
 USER builder
 WORKDIR /home/builder
 
+# Inject version from build arg and disable debug split package
+RUN sed -i "s/^pkgver=.*/pkgver=${VERSION}/" PKGBUILD
+
 # --nodeps: deps already present; --nocheck: no test suite
 RUN makepkg --nodeps --nocheck --noconfirm
 

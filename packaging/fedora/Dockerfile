@@ -54,7 +54,10 @@ COPY --from=builder /src/keasyditor.desktop                 /root/rpmbuild/BUILD
 COPY --from=builder /src/crates/keasyditor/assets/icon.svg  /root/rpmbuild/BUILD/keasyditor.svg
 COPY packaging/fedora/keasyditor.spec                       /root/rpmbuild/SPECS/keasyditor.spec
 
-RUN rpmbuild -bb /root/rpmbuild/SPECS/keasyditor.spec \
+# Inject version from build arg
+RUN sed -i "s/^Version:.*/Version:        ${VERSION}/" /root/rpmbuild/SPECS/keasyditor.spec
+
+RUN rpmbuild -bb --define 'debug_package %{nil}' /root/rpmbuild/SPECS/keasyditor.spec \
     && find /root/rpmbuild/RPMS -name '*.rpm' -exec cp {} /out/ \;
 
 # ── Stage 3: export ───────────────────────────────────────────────────────────
