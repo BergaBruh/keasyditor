@@ -1,0 +1,23 @@
+# Rust / Cargo
+/target/
+Cargo.lock
+/test_fixtures/
+
+# Claude Code instructions (local only, not for version control)
+CLAUDE.md
+**/CLAUDE.md
+
+# Build artifacts
+/build/
+
+# Editor
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

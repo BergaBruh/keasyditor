@@ -1,0 +1,45 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  package:
+    name: Package / ${{ matrix.distro }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        distro: [debian, ubuntu, fedora, archlinux]
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build package
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: packaging/${{ matrix.distro }}/Dockerfile
+          outputs: type=local,dest=build/packages
+          build-args: VERSION=${{ env.VERSION }}
+          cache-from: type=gha,scope=${{ matrix.distro }}
+          cache-to: type=gha,scope=${{ matrix.distro }},mode=max
+
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$TAG" build/packages/* --clobber

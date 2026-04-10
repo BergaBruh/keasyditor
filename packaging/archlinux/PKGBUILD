@@ -1,0 +1,32 @@
+# Maintainer: KEasyDitor contributors
+# This PKGBUILD expects the binary to be pre-built by the Docker builder stage.
+# The following files must exist in $startdir (directory containing this PKGBUILD):
+#   keasyditor          — compiled binary
+#   keasyditor.desktop  — desktop entry
+#   keasyditor.svg      — application icon
+
+pkgname=keasyditor
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Visual editor for Klassy and Kvantum KDE themes"
+arch=('x86_64')
+url="https://github.com/BergaBruh/keasyditor"
+license=('MIT')
+depends=(
+    'libxkbcommon'
+    'wayland'
+    'fontconfig'
+    'libgl'
+    'xdg-desktop-portal'
+)
+source=()
+sha256sums=()
+
+package() {
+    install -Dm755 "$startdir/keasyditor" \
+                   "$pkgdir/usr/bin/keasyditor"
+    install -Dm644 "$startdir/keasyditor.desktop" \
+                   "$pkgdir/usr/share/applications/keasyditor.desktop"
+    install -Dm644 "$startdir/keasyditor.svg" \
+                   "$pkgdir/usr/share/icons/hicolor/scalable/apps/keasyditor.svg"
+}

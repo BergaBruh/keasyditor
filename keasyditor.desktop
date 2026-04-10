@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=KEasyDitor
+GenericName=KDE Theme Editor
+Comment=Visual editor for Klassy and Kvantum KDE themes
+Exec=keasyditor
+Icon=keasyditor
+Categories=Settings;DesktopSettings;Qt;KDE;
+Keywords=theme;kde;klassy;kvantum;style;colors;appearance;
+StartupWMClass=keasyditor
+Terminal=false

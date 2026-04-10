@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config \
+            libxkbcommon-dev \
+            libwayland-dev \
+            libfontconfig-dev \
+            libegl-dev \
+            libx11-dev \
+            libxcb1-dev
+
+      - name: cargo test
+        run: cargo test -p keasyditor-core
+
+      - name: cargo check
+        run: cargo check -p keasyditor
+
+      - name: cargo clippy
+        run: cargo clippy -p keasyditor -- -D warnings
