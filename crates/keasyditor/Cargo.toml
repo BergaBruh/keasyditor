@@ -6,7 +6,7 @@ description = "KEasyDitor — visual KDE theme editor (Klassy + Kvantum)"
 
 [dependencies]
 keasyditor-core = { path = "../keasyditor-core" }
-iced = { version = "0.14", features = ["canvas", "svg", "tokio", "debug"] }
-iced_aw = { version = "0.12", default-features = false, features = ["tab_bar", "card", "color_picker"] }
+iced = { version = "0.14", features = ["canvas", "svg", "tokio", "debug", "wgpu"] }
+iced_aw = { version = "0.13", default-features = false, features = ["tab_bar", "card", "color_picker"] }
 rfd = "0.15"
 tokio = { version = "1", features = ["fs", "process", "time"] }

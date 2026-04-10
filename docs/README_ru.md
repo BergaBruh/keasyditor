@@ -40,9 +40,9 @@
 
 | Дистрибутив | Пакет |
 |---|---|
-| Debian 11+ | `keasyditor_*_amd64.deb` |
-| Ubuntu 22.04+ | `keasyditor_*_amd64.deb` |
-| Fedora 39+ | `keasyditor-*.x86_64.rpm` |
+| Debian 13 | `keasyditor_*_amd64.deb` |
+| Ubuntu 24.04+ | `keasyditor_*_amd64.deb` |
+| Fedora 40+ | `keasyditor-*.x86_64.rpm` |
 | Arch Linux | `keasyditor-*.pkg.tar.zst` |
 
 ```bash
@@ -100,17 +100,3 @@ make package-fedora                      # только Fedora
 | Конфиг Klassy | `~/.config/klassy/klassyrc` |
 | Темы Kvantum | `~/.config/Kvantum/` |
 
----
-
-## Участие в разработке
-
-Коммиты следуют формату [Conventional Commits](https://www.conventionalcommits.org/ru/):
-
-| Префикс | Результат |
-|---|---|
-| `feat: ...` | минорная версия, попадает в changelog |
-| `fix: ...` | патч-версия, попадает в changelog |
-| `chore:`, `docs:`, `style:` | без релиза |
-| `feat!:` или `BREAKING CHANGE` | мажорная версия |
-
-Релизы создаются автоматически через [release-please](https://github.com/googleapis/release-please) при слиянии изменений в `main`.

@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# Produces: keasyditor_<version>_amd64.deb  (Debian 11 Bullseye and newer)
+# Produces: keasyditor_<version>_amd64.deb  (Debian 13 Trixie and newer)
 # Usage:
 #   DOCKER_BUILDKIT=1 docker build \
 #     --output type=local,dest=build/packages \
@@ -8,7 +8,7 @@
 ARG VERSION=0.1.0
 
 # ── Stage 1: compile ─────────────────────────────────────────────────────────
-FROM rust:slim-bullseye AS builder
+FROM rust:slim-trixie AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         pkg-config \
@@ -35,7 +35,7 @@ COPY . .
 RUN cargo build --release -p keasyditor
 
 # ── Stage 2: assemble .deb ────────────────────────────────────────────────────
-FROM debian:11-slim AS package
+FROM debian:trixie-slim AS package
 
 ARG VERSION
 
@@ -59,7 +59,7 @@ RUN set -e \
     && install -m644 /artifacts/keasyditor.svg   \
                      /pkg/usr/share/icons/hicolor/scalable/apps/keasyditor.svg \
     && INSTALLED_SIZE=$(du -sk /pkg/usr | cut -f1) \
-    && printf 'Package: keasyditor\nVersion: %s\nArchitecture: amd64\nInstalled-Size: %s\nMaintainer: KEasyDitor contributors\nSection: kde\nPriority: optional\nHomepage: https://github.com/BergaBruh/keasyditor\nDepends: libxkbcommon0, libwayland-client0, libfontconfig1, libgl1-mesa-glx | libgl1, libegl1-mesa | libegl1\nRecommends: xdg-desktop-portal-kde | xdg-desktop-portal-gnome\nDescription: Visual editor for Klassy and Kvantum KDE themes\n KEasyDitor provides a graphical interface for editing KDE Plasma themes.\n .\n Supports the Klassy window decoration engine (klassyrc) and the Kvantum\n Qt widget theme engine (.kvconfig + SVG). Features live preview, undo/redo,\n and colour palette extraction via matugen.\n' \
+    && printf 'Package: keasyditor\nVersion: %s\nArchitecture: amd64\nInstalled-Size: %s\nMaintainer: KEasyDitor contributors\nSection: kde\nPriority: optional\nHomepage: https://github.com/BergaBruh/keasyditor\nDepends: libxkbcommon0, libwayland-client0, libfontconfig1, libgl1, libegl1\nRecommends: xdg-desktop-portal-kde | xdg-desktop-portal-gnome\nDescription: Visual editor for Klassy and Kvantum KDE themes\n KEasyDitor provides a graphical interface for editing KDE Plasma themes.\n .\n Supports the Klassy window decoration engine (klassyrc) and the Kvantum\n Qt widget theme engine (.kvconfig + SVG). Features live preview, undo/redo,\n and colour palette extraction via matugen.\n' \
         "${VERSION}" "${INSTALLED_SIZE}" > /pkg/DEBIAN/control \
     && printf '#!/bin/sh\nset -e\nif command -v gtk-update-icon-cache >/dev/null 2>&1; then\n    gtk-update-icon-cache -f -t /usr/share/icons/hicolor || true\nfi\n' \
         > /pkg/DEBIAN/postinst \

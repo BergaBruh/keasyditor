@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# Produces: keasyditor_<version>_amd64.deb  (Ubuntu 22.04 Jammy and newer)
+# Produces: keasyditor_<version>_amd64.deb  (Ubuntu 24.04 Noble and newer)
 # Usage:
 #   DOCKER_BUILDKIT=1 docker build \
 #     --output type=local,dest=build/packages \
@@ -8,7 +8,7 @@
 ARG VERSION=0.1.0
 
 # ── Stage 1: compile ─────────────────────────────────────────────────────────
-FROM ubuntu:22.04 AS builder
+FROM ubuntu:24.04 AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -43,7 +43,7 @@ COPY . .
 RUN cargo build --release -p keasyditor
 
 # ── Stage 2: assemble .deb ────────────────────────────────────────────────────
-FROM ubuntu:22.04 AS package
+FROM ubuntu:24.04 AS package
 
 ARG VERSION
 ENV DEBIAN_FRONTEND=noninteractive

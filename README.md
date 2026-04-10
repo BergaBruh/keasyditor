@@ -40,9 +40,9 @@ Download the package for your distribution from the [latest release](https://git
 
 | Distribution | Package |
 |---|---|
-| Debian 11+ | `keasyditor_*_amd64.deb` |
-| Ubuntu 22.04+ | `keasyditor_*_amd64.deb` |
-| Fedora 39+ | `keasyditor-*.x86_64.rpm` |
+| Debian 13 | `keasyditor_*_amd64.deb` |
+| Ubuntu 24.04+ | `keasyditor_*_amd64.deb` |
+| Fedora 40+ | `keasyditor-*.x86_64.rpm` |
 | Arch Linux | `keasyditor-*.pkg.tar.zst` |
 
 ```bash
@@ -100,17 +100,3 @@ Docker with BuildKit is required for package builds (Docker 23+ has it by defaul
 | Klassy config | `~/.config/klassy/klassyrc` |
 | Kvantum themes | `~/.config/Kvantum/` |
 
----
-
-## Contributing
-
-Pull requests are welcome. To create a release:
-
-1. Update the version in `crates/keasyditor/Cargo.toml`
-2. Commit and push to `main`
-3. Push a tag — packages are built and a GitHub Release is created automatically:
-
-```bash
-git tag v0.2.0
-git push origin v0.2.0
-```
