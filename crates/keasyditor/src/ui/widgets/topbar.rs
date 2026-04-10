@@ -6,6 +6,7 @@ use crate::message::Message;
 use crate::theme;
 
 /// Editor topbar: breadcrumb + file path box + Unsaved badge + action buttons.
+#[allow(clippy::too_many_arguments)]
 pub fn editor_topbar<'a>(
     crumbs: &[&'a str],
     accent: Color,
@@ -164,11 +165,10 @@ fn topbar_button(
             }
         });
 
-    if enabled {
-        if let Some(msg) = on_press {
+    if enabled
+        && let Some(msg) = on_press {
             btn = btn.on_press(msg);
         }
-    }
 
     btn.into()
 }

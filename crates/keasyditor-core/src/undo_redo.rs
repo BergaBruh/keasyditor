@@ -2,8 +2,6 @@
 ///
 /// Pushing a new state clears any redo history. The stack has no maximum
 /// size limit by default.
-
-/// A generic undo/redo stack.
 #[derive(Clone, Debug)]
 pub struct UndoRedoStack<T: Clone> {
     /// Past states (most recent at the end). Does not include current.

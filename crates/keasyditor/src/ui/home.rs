@@ -7,6 +7,7 @@ use crate::theme;
 use crate::ui::widgets::color_utils::{parse_hex, luminance};
 
 /// Home page: header, two editor cards, wallpaper colors, installed themes.
+#[allow(clippy::too_many_arguments)]
 pub fn home_page<'a>(
     installed_themes: &'a [(String, bool)],
     matugen_loading: bool,

@@ -2,7 +2,6 @@
 ///
 /// Each enum has `from_value` and `value` methods matching the exact strings
 /// used in Klassy INI config files.
-
 macro_rules! klassy_enum {
     (
         $(#[$meta:meta])*

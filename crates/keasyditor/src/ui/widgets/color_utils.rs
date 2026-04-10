@@ -27,11 +27,10 @@ pub fn read_color(
     default: Color,
 ) -> Color {
     let hex_key = format!("color.{}.hex", name);
-    if let Some(hex) = text_input_values.get(&hex_key) {
-        if hex.len() >= 4 {
+    if let Some(hex) = text_input_values.get(&hex_key)
+        && hex.len() >= 4 {
             return parse_hex(hex);
         }
-    }
     let r_key = format!("color.{}.r", name);
     let g_key = format!("color.{}.g", name);
     let b_key = format!("color.{}.b", name);

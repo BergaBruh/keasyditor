@@ -134,16 +134,14 @@ pub fn parse_matugen_json(json: &str, image_path: &str) -> Option<MatugenPalette
 
     for (name, variants) in colors {
         if let Some(variants) = variants.as_object() {
-            if let Some(dark_val) = variants.get("dark").and_then(|v| v.as_object()) {
-                if let Some(color) = dark_val.get("color").and_then(|c| c.as_str()) {
+            if let Some(dark_val) = variants.get("dark").and_then(|v| v.as_object())
+                && let Some(color) = dark_val.get("color").and_then(|c| c.as_str()) {
                     dark.insert(name.clone(), color.to_string());
                 }
-            }
-            if let Some(light_val) = variants.get("light").and_then(|v| v.as_object()) {
-                if let Some(color) = light_val.get("color").and_then(|c| c.as_str()) {
+            if let Some(light_val) = variants.get("light").and_then(|v| v.as_object())
+                && let Some(color) = light_val.get("color").and_then(|c| c.as_str()) {
                     light.insert(name.clone(), color.to_string());
                 }
-            }
         }
     }
 
@@ -163,8 +161,8 @@ pub fn is_dark_from_kdeglobals(content: &str) -> Option<bool> {
             in_colors_window = trimmed == "[Colors:Window]";
             continue;
         }
-        if in_colors_window {
-            if let Some(val) = trimmed.strip_prefix("BackgroundNormal=") {
+        if in_colors_window
+            && let Some(val) = trimmed.strip_prefix("BackgroundNormal=") {
                 let parts: Vec<&str> = val.split(',').collect();
                 if parts.len() >= 3 {
                     let r: f32 = parts[0].trim().parse().unwrap_or(0.0);
@@ -174,7 +172,6 @@ pub fn is_dark_from_kdeglobals(content: &str) -> Option<bool> {
                     return Some(luminance < 128.0);
                 }
             }
-        }
     }
     None
 }

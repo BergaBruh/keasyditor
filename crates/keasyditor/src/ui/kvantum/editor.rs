@@ -24,6 +24,7 @@ fn tab_keys() -> [&'static str; TAB_COUNT] {
 }
 
 /// Full Kvantum editor page: topbar + tab bar + scrollable content.
+#[allow(clippy::too_many_arguments)]
 pub fn kvantum_editor<'a>(
     active_tab: usize,
     is_dirty: bool,

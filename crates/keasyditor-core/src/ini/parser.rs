@@ -15,8 +15,8 @@ pub fn parse_ini(input: &str) -> IniDocument {
         let trimmed = line.trim();
 
         // Section header: [Name] or [%General]
-        if trimmed.starts_with('[') {
-            if let Some(end) = trimmed.find(']') {
+        if trimmed.starts_with('[')
+            && let Some(end) = trimmed.find(']') {
                 let name = trimmed[1..end].to_string();
 
                 // Push previous section if any
@@ -31,7 +31,6 @@ pub fn parse_ini(input: &str) -> IniDocument {
                 });
                 continue;
             }
-        }
 
         // If no section yet, these are header lines
         if current_section.is_none() {

@@ -283,8 +283,8 @@ impl App {
 
     fn subscription(&self) -> iced::Subscription<Message> {
         iced::keyboard::listen().map(|event| {
-            if let iced::keyboard::Event::KeyPressed { key, modifiers, .. } = event {
-                if modifiers.command() {
+            if let iced::keyboard::Event::KeyPressed { key, modifiers, .. } = event
+                && modifiers.command() {
                     match key {
                         iced::keyboard::Key::Character(ref c) if c == "z" && !modifiers.shift() => {
                             return Message::UndoCurrentPage;
@@ -301,7 +301,6 @@ impl App {
                         _ => {}
                     }
                 }
-            }
             Message::Noop
         })
     }
@@ -464,20 +463,18 @@ impl App {
                     }
                 }
                 KlassyMessage::Undo => {
-                    if let Some(undo) = &mut self.klassy_undo {
-                        if let Some(prev) = undo.undo() {
+                    if let Some(undo) = &mut self.klassy_undo
+                        && let Some(prev) = undo.undo() {
                             self.klassy_config = Some(prev.clone());
                             self.sync_klassy_ui_from_config();
                         }
-                    }
                 }
                 KlassyMessage::Redo => {
-                    if let Some(undo) = &mut self.klassy_undo {
-                        if let Some(next) = undo.redo() {
+                    if let Some(undo) = &mut self.klassy_undo
+                        && let Some(next) = undo.redo() {
                             self.klassy_config = Some(next.clone());
                             self.sync_klassy_ui_from_config();
                         }
-                    }
                 }
                 KlassyMessage::Apply => {
                     return Task::perform(
@@ -765,20 +762,18 @@ impl App {
                     }
                 }
                 KvantumMessage::Undo => {
-                    if let Some(undo) = &mut self.kvantum_undo {
-                        if let Some(prev) = undo.undo() {
+                    if let Some(undo) = &mut self.kvantum_undo
+                        && let Some(prev) = undo.undo() {
                             self.kvantum_config = Some(prev.clone());
                             self.sync_kvantum_ui_from_config();
                         }
-                    }
                 }
                 KvantumMessage::Redo => {
-                    if let Some(undo) = &mut self.kvantum_undo {
-                        if let Some(next) = undo.redo() {
+                    if let Some(undo) = &mut self.kvantum_undo
+                        && let Some(next) = undo.redo() {
                             self.kvantum_config = Some(next.clone());
                             self.sync_kvantum_ui_from_config();
                         }
-                    }
                 }
                 KvantumMessage::Apply => {
                     let theme_name = self.kvantum_theme_name.clone();
@@ -881,7 +876,7 @@ impl App {
                         .map(|n| n.to_string_lossy().to_string())
                         .unwrap_or_else(|| "MyTheme".to_string());
                     // Write a minimal kvconfig
-                    let content = format!("[%General]\n\n[GeneralColors]\nwindow.color=#181614\nbase.color=#181614\ntext.color=#E6DCD2\nhighlight.color=#C17D3A\n");
+                    let content = "[%General]\n\n[GeneralColors]\nwindow.color=#181614\nbase.color=#181614\ntext.color=#E6DCD2\nhighlight.color=#C17D3A\n".to_string();
                     let _ = std::fs::create_dir_all(&dir);
                     let _ = std::fs::write(&path, &content);
                     // Load the new theme
@@ -1269,32 +1264,28 @@ impl App {
                     .insert("klassy.titlebar_bottom_margin".to_string(), v as f32);
             }
             // Button spacing
-            if let Some(v) = config.get_value("Windeco", "ButtonSpacingLeft") {
-                if let Ok(n) = v.parse::<f32>() {
+            if let Some(v) = config.get_value("Windeco", "ButtonSpacingLeft")
+                && let Ok(n) = v.parse::<f32>() {
                     self.slider_values
                         .insert("klassy.button_spacing_left".to_string(), n);
                 }
-            }
-            if let Some(v) = config.get_value("Windeco", "ButtonSpacingRight") {
-                if let Ok(n) = v.parse::<f32>() {
+            if let Some(v) = config.get_value("Windeco", "ButtonSpacingRight")
+                && let Ok(n) = v.parse::<f32>() {
                     self.slider_values
                         .insert("klassy.button_spacing_right".to_string(), n);
                 }
-            }
             // Shadow size
-            if let Some(v) = config.get_value("ShadowStyle", "ShadowSize") {
-                if let Ok(n) = v.parse::<f32>() {
+            if let Some(v) = config.get_value("ShadowStyle", "ShadowSize")
+                && let Ok(n) = v.parse::<f32>() {
                     self.slider_values
                         .insert("klassy.shadow_size".to_string(), n);
                 }
-            }
             // Side padding
-            if let Some(v) = config.get_value("TitleBarSpacing", "TitleBarSidePadding") {
-                if let Ok(n) = v.parse::<f32>() {
+            if let Some(v) = config.get_value("TitleBarSpacing", "TitleBarSidePadding")
+                && let Ok(n) = v.parse::<f32>() {
                     self.slider_values
                         .insert("klassy.titlebar_side_padding".to_string(), n);
                 }
-            }
             // Animation duration
             if let Some(v) = config.animations_speed_relative_system() {
                 self.slider_values
@@ -1358,8 +1349,8 @@ impl App {
                 ("klassy.outline_color_inactive", "Windeco", "WindowOutlineCustomColorInactive"),
             ];
             for &(key_prefix, section, ini_key) in color_mappings {
-                if let Some(v) = config.get_value(section, ini_key) {
-                    if let Some(rgba) = keasyditor_core::color::try_parse(v) {
+                if let Some(v) = config.get_value(section, ini_key)
+                    && let Some(rgba) = keasyditor_core::color::try_parse(v) {
                         let prefix = format!("color.{}", key_prefix);
                         self.slider_values.insert(format!("{}.r", prefix), rgba.r as f32);
                         self.slider_values.insert(format!("{}.g", prefix), rgba.g as f32);
@@ -1369,7 +1360,6 @@ impl App {
                             format!("#{:02X}{:02X}{:02X}", rgba.r, rgba.g, rgba.b),
                         );
                     }
-                }
             }
         }
     }
@@ -1668,48 +1658,44 @@ impl App {
             }
             // Kvantum legacy sliders — use new_config pattern for correct undo
             "kvantum.window_opacity_reduction" => {
-                if let Ok(v) = value.parse::<i64>() {
-                    if let Some(config) = self.kvantum_config.take() {
+                if let Ok(v) = value.parse::<i64>()
+                    && let Some(config) = self.kvantum_config.take() {
                         let mut g = config.general.clone();
                         g.set_reduce_window_opacity(v);
                         let nc = config.copy_with_general(g);
                         if let Some(undo) = &mut self.kvantum_undo { undo.push(nc.clone()); }
                         self.kvantum_config = Some(nc);
                     }
-                }
             }
             "kvantum.reduce_opacity" => {
-                if let Ok(v) = value.parse::<i64>() {
-                    if let Some(config) = self.kvantum_config.take() {
+                if let Ok(v) = value.parse::<i64>()
+                    && let Some(config) = self.kvantum_config.take() {
                         let mut g = config.general.clone();
                         g.set_reduce_menu_opacity(v);
                         let nc = config.copy_with_general(g);
                         if let Some(undo) = &mut self.kvantum_undo { undo.push(nc.clone()); }
                         self.kvantum_config = Some(nc);
                     }
-                }
             }
             "kvantum.scrollbar_width" => {
-                if let Ok(v) = value.parse::<i64>() {
-                    if let Some(config) = self.kvantum_config.take() {
+                if let Ok(v) = value.parse::<i64>()
+                    && let Some(config) = self.kvantum_config.take() {
                         let mut g = config.general.clone();
                         g.set_slider_width(v);
                         let nc = config.copy_with_general(g);
                         if let Some(undo) = &mut self.kvantum_undo { undo.push(nc.clone()); }
                         self.kvantum_config = Some(nc);
                     }
-                }
             }
             "kvantum.scroll_arrow_size" => {
-                if let Ok(v) = value.parse::<i64>() {
-                    if let Some(config) = self.kvantum_config.take() {
+                if let Ok(v) = value.parse::<i64>()
+                    && let Some(config) = self.kvantum_config.take() {
                         let mut g = config.general.clone();
                         g.set_scroll_min_extent(v);
                         let nc = config.copy_with_general(g);
                         if let Some(undo) = &mut self.kvantum_undo { undo.push(nc.clone()); }
                         self.kvantum_config = Some(nc);
                     }
-                }
             }
             "kvantum.highlight_opacity" | "kvantum.pushbutton_min_width"
             | "kvantum.pushbutton_min_height" | "kvantum.combobox_min_width" => {
@@ -1836,8 +1822,8 @@ impl App {
             // Kvantum hack sliders: "kvantum.hacks.*"
             other if other.starts_with("kvantum.hacks.") && !other.ends_with(".search") => {
                 let hack_key = other.strip_prefix("kvantum.hacks.").unwrap_or("");
-                if !hack_key.is_empty() {
-                    if let Some(config) = self.kvantum_config.take() {
+                if !hack_key.is_empty()
+                    && let Some(config) = self.kvantum_config.take() {
                         let mut new_hacks = config.hacks.clone();
                         new_hacks.insert(hack_key.to_string(), value.to_string());
                         let new_config = config.copy_with_hacks(new_hacks);
@@ -1846,7 +1832,6 @@ impl App {
                         }
                         self.kvantum_config = Some(new_config);
                     }
-                }
             }
             // Kvantum color fields: "color.kvantum.color.<key>.hex"
             other if other.starts_with("color.kvantum.color.") && other.ends_with(".hex") => {

@@ -802,11 +802,10 @@ fn widget_section_detail<'a>(
     let key_prefix = format!("{}.", prefix);
     let mut entries: Vec<(&str, &str)> = Vec::new();
     for (k, v) in text_input_values {
-        if let Some(prop) = k.strip_prefix(&key_prefix) {
-            if prop != "inherits" {
+        if let Some(prop) = k.strip_prefix(&key_prefix)
+            && prop != "inherits" {
                 entries.push((prop, v.as_str()));
             }
-        }
     }
     entries.sort_by_key(|(k, _)| *k);
 

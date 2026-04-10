@@ -139,7 +139,7 @@ pub fn color_picker_field<'a>(
     let hex_key_owned = hex_key.clone();
     let hex_input = row![
         text("#").size(12).color(theme::DIM),
-        text_input("RRGGBB", &hex_input_val.trim_start_matches('#'))
+        text_input("RRGGBB", hex_input_val.trim_start_matches('#'))
             .on_input(move |v| {
                 let hex = if v.starts_with('#') { v } else { format!("#{}", v) };
                 Message::TextInputChanged { key: hex_key_owned.clone(), value: hex }
@@ -293,9 +293,7 @@ impl canvas::Program<Message> for HslWheel {
         bounds: Rectangle,
         cursor: mouse::Cursor,
     ) -> Option<canvas::Action<Message>> {
-        let Some(pos) = cursor.position_in(bounds) else {
-            return None;
-        };
+        let pos = cursor.position_in(bounds)?;
 
         let cx = bounds.width / 2.0;
         let cy = bounds.height / 2.0;

@@ -89,11 +89,10 @@ fn get_element_color_attr(svg_content: &str, element_id: &str, attr_name: &str) 
     let info = find_element_attrs(svg_content, element_id)?;
 
     // Check direct attribute first
-    if let Some(val) = info.attrs.get(attr_name) {
-        if !val.is_empty() {
+    if let Some(val) = info.attrs.get(attr_name)
+        && !val.is_empty() {
             return Some(val.clone());
         }
-    }
 
     // Fall back to style attribute
     if let Some(style) = info.attrs.get("style") {
@@ -204,13 +203,11 @@ pub fn get_all_element_ids(svg_content: &str) -> Vec<String> {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(ref tag)) | Ok(Event::Empty(ref tag)) => {
                 for attr in tag.attributes().flatten() {
-                    if attr.key.as_ref() == b"id" {
-                        if let Ok(val) = String::from_utf8(attr.value.to_vec()) {
-                            if !val.is_empty() {
+                    if attr.key.as_ref() == b"id"
+                        && let Ok(val) = String::from_utf8(attr.value.to_vec())
+                            && !val.is_empty() {
                                 ids.push(val);
                             }
-                        }
-                    }
                 }
             }
             Ok(Event::Eof) => break,

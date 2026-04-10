@@ -112,11 +112,10 @@ fn search_dirs() -> Vec<PathBuf> {
     }
 
     // 3. Next to the executable: <exe_dir>/locale/
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(exe_dir) = exe.parent() {
+    if let Ok(exe) = std::env::current_exe()
+        && let Some(exe_dir) = exe.parent() {
             dirs.push(exe_dir.join("locale"));
         }
-    }
 
     // 4. System install: /usr/share/keasyditor/locale/
     dirs.push(PathBuf::from("/usr/share/keasyditor/locale"));

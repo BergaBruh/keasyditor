@@ -10,9 +10,9 @@ use crate::ui::klassy::preview::klassy_preview;
 use crate::ui::klassy::tabs::klassy_tab_content;
 use crate::ui::widgets::topbar::editor_topbar;
 
-const TAB_COUNT: usize = 6;
 
 /// Full Klassy editor page: topbar + tab bar + split view (3:2).
+#[allow(clippy::too_many_arguments)]
 pub fn klassy_editor<'a>(
     active_tab: usize,
     is_dirty: bool,
@@ -135,9 +135,9 @@ fn klassy_tab_bar(active_tab: usize) -> Element<'static, Message> {
 
     let mut tabs = row![].spacing(0);
 
-    for i in 0..TAB_COUNT {
+    for (i, label) in tab_labels.iter().enumerate() {
         let is_active = i == active_tab;
-        tabs = tabs.push(tab_button(tab_labels[i].clone(), i, is_active, theme::AMBER));
+        tabs = tabs.push(tab_button(label.clone(), i, is_active, theme::AMBER));
     }
 
     // Spacer pushes "Presets" button to the right

@@ -531,6 +531,7 @@ fn draw_full_height_buttons(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn draw_integrated_buttons(
     frame: &mut canvas::Frame,
     win_x: f32, win_y: f32, win_w: f32,
