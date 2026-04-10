@@ -1,6 +1,5 @@
 # Rust / Cargo
 /target/
-Cargo.lock
 
 # Claude Code instructions (local only, not for version control)
 CLAUDE.md

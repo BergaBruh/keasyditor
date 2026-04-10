@@ -59,24 +59,8 @@ RUN set -e \
     && install -m644 /artifacts/keasyditor.svg   \
                      /pkg/usr/share/icons/hicolor/scalable/apps/keasyditor.svg \
     && INSTALLED_SIZE=$(du -sk /pkg/usr | cut -f1) \
-    && cat > /pkg/DEBIAN/control <<EOF
-Package: keasyditor
-Version: ${VERSION}
-Architecture: amd64
-Installed-Size: ${INSTALLED_SIZE}
-Maintainer: KEasyDitor contributors
-Section: kde
-Priority: optional
-Homepage: https://github.com/BergaBruh/keasyditor
-Depends: libxkbcommon0, libwayland-client0, libfontconfig1, libgl1-mesa-glx | libgl1, libegl1-mesa | libegl1
-Recommends: xdg-desktop-portal-kde | xdg-desktop-portal-gnome
-Description: Visual editor for Klassy and Kvantum KDE themes
- KEasyDitor provides a graphical interface for editing KDE Plasma themes.
- .
- Supports the Klassy window decoration engine (klassyrc) and the Kvantum
- Qt widget theme engine (.kvconfig + SVG). Features live preview, undo/redo,
- and colour palette extraction via matugen.
-EOF
+    && printf 'Package: keasyditor\nVersion: %s\nArchitecture: amd64\nInstalled-Size: %s\nMaintainer: KEasyDitor contributors\nSection: kde\nPriority: optional\nHomepage: https://github.com/BergaBruh/keasyditor\nDepends: libxkbcommon0, libwayland-client0, libfontconfig1, libgl1-mesa-glx | libgl1, libegl1-mesa | libegl1\nRecommends: xdg-desktop-portal-kde | xdg-desktop-portal-gnome\nDescription: Visual editor for Klassy and Kvantum KDE themes\n KEasyDitor provides a graphical interface for editing KDE Plasma themes.\n .\n Supports the Klassy window decoration engine (klassyrc) and the Kvantum\n Qt widget theme engine (.kvconfig + SVG). Features live preview, undo/redo,\n and colour palette extraction via matugen.\n' \
+        "${VERSION}" "${INSTALLED_SIZE}" > /pkg/DEBIAN/control \
     && printf '#!/bin/sh\nset -e\nif command -v gtk-update-icon-cache >/dev/null 2>&1; then\n    gtk-update-icon-cache -f -t /usr/share/icons/hicolor || true\nfi\n' \
         > /pkg/DEBIAN/postinst \
     && chmod 755 /pkg/DEBIAN/postinst \
