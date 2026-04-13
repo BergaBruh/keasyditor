@@ -854,9 +854,12 @@ impl App {
                 KvantumMessage::NewTheme => {
                     return Task::perform(
                         async {
+                            let kvantum_dir = keasyditor_core::constants::kvantum_config_dir();
+                            let _ = std::fs::create_dir_all(&kvantum_dir);
                             let file = rfd::AsyncFileDialog::new()
                                 .set_title("Save new Kvantum theme")
                                 .set_file_name("MyTheme.kvconfig")
+                                .set_directory(&kvantum_dir)
                                 .add_filter("Kvantum config", &["kvconfig"])
                                 .save_file()
                                 .await;
@@ -866,24 +869,51 @@ impl App {
                     );
                 }
                 KvantumMessage::NewThemeCreated(Some(path)) => {
-                    // Create a minimal kvconfig and open it
-                    let dir = std::path::Path::new(&path)
-                        .parent()
-                        .map(|p| p.to_string_lossy().to_string())
-                        .unwrap_or_default();
-                    let _name = std::path::Path::new(&path)
+                    // Always create themes under ~/.config/Kvantum/<name>/<name>.kvconfig
+                    // regardless of where the dialog returned — only the file stem matters.
+                    let name = std::path::Path::new(&path)
                         .file_stem()
-                        .map(|n| n.to_string_lossy().to_string())
-                        .unwrap_or_else(|| "MyTheme".to_string());
-                    // Write a minimal kvconfig
-                    let content = "[%General]\n\n[GeneralColors]\nwindow.color=#181614\nbase.color=#181614\ntext.color=#E6DCD2\nhighlight.color=#C17D3A\n".to_string();
-                    let _ = std::fs::create_dir_all(&dir);
-                    let _ = std::fs::write(&path, &content);
-                    // Load the new theme
-                    self.page = Page::Kvantum;
-                    return self.update(Message::Kvantum(KvantumMessage::LoadTheme(
-                        std::path::PathBuf::from(dir),
-                    )));
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("MyTheme")
+                        .to_string();
+
+                    let file_svc = keasyditor_core::services::FileService::new();
+                    let kv_svc = keasyditor_core::services::KvantumService::new(file_svc);
+
+                    match kv_svc.create_theme(&name) {
+                        Ok(theme_dir_path) => {
+                            self.page = Page::Kvantum;
+                            let load_task = self.update(Message::Kvantum(
+                                KvantumMessage::LoadTheme(std::path::PathBuf::from(
+                                    theme_dir_path,
+                                )),
+                            ));
+                            // Re-discover so the new theme appears in the picker
+                            let discover_task = Task::perform(
+                                async {
+                                    let file_svc =
+                                        keasyditor_core::services::FileService::new();
+                                    let discovery =
+                                        keasyditor_core::services::ThemeDiscoveryService::new(
+                                            file_svc,
+                                        );
+                                    discovery
+                                        .discover_kvantum_themes()
+                                        .into_iter()
+                                        .map(|t| (t.name, t.path, t.is_system))
+                                        .collect::<Vec<_>>()
+                                },
+                                |themes| {
+                                    Message::Kvantum(KvantumMessage::ThemesDiscovered(themes))
+                                },
+                            );
+                            return Task::batch([load_task, discover_task]);
+                        }
+                        Err(e) => {
+                            self.kvantum_error =
+                                Some(format!("Failed to create theme: {}", e));
+                        }
+                    }
                 }
                 KvantumMessage::NewThemeCreated(None) => {
                     // Dialog cancelled
