@@ -184,4 +184,16 @@ pub enum SettingsMessage {
         is_dark: bool,
     },
     ToggleDarkPalette(bool),
+    /// User pressed the "Set wallpaper colors to all system" button — show
+    /// a confirmation prompt before overwriting anything.
+    ShowApplyToSystemConfirm,
+    /// User dismissed the confirmation prompt.
+    HideApplyToSystemConfirm,
+    /// User confirmed — run the full system-wide apply pipeline.
+    ApplyToSystem,
+    /// Result of the system-wide apply pipeline.
+    ApplyToSystemResult {
+        ok: bool,
+        steps: Vec<String>,
+    },
 }

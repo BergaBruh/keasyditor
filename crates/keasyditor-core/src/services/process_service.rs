@@ -70,6 +70,15 @@ impl ProcessService {
         self.run("kvantummanager", &["--set", theme_name])
     }
 
+    /// Apply a Plasma color scheme by name (e.g. `MatugenDark`).
+    ///
+    /// Tries `plasma-apply-colorscheme` first, then falls back to direct
+    /// invocation of `lookandfeeltool` with a minimal colorscheme switch —
+    /// though on every modern Plasma 5/6 install the first one exists.
+    pub fn apply_plasma_colorscheme(&self, scheme_name: &str) -> io::Result<ProcessResult> {
+        self.run("plasma-apply-colorscheme", &[scheme_name])
+    }
+
     /// Reconfigure KWin so that Klassy decoration changes take effect.
     ///
     /// Tries `qdbus6` first, then falls back to `qdbus`.

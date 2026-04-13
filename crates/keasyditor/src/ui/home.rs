@@ -17,6 +17,8 @@ pub fn home_page<'a>(
     kvantum_installed: bool,
     matugen_installed: bool,
     active_kvantum_theme: Option<&'a str>,
+    show_apply_confirm: bool,
+    apply_status: Option<&'a (bool, Vec<String>)>,
 ) -> Element<'a, Message> {
     let header = column![
         text(t("home.title"))
@@ -68,12 +70,23 @@ pub fn home_page<'a>(
             ..Default::default()
         });
 
+    let apply_system_btn = apply_to_system_button(matugen_installed && matugen_palette.is_some());
     let dark_btn = theme_mode_button(t("home.palette.dark"), prefer_dark);
     let light_btn = theme_mode_button(t("home.palette.light"), !prefer_dark);
-    let mode_toggle = row![dark_btn, light_btn].spacing(4);
+    let mode_toggle = row![apply_system_btn, dark_btn, light_btn].spacing(4);
 
     let palette_header = row![palette_title, Space::new().width(Fill), mode_toggle]
         .align_y(iced::Alignment::Center);
+
+    let confirm_panel: Option<Element<'a, Message>> = if show_apply_confirm {
+        Some(build_confirm_panel())
+    } else {
+        None
+    };
+
+    let status_panel: Option<Element<'a, Message>> = apply_status.map(|(ok, steps)| {
+        build_status_panel(*ok, steps)
+    });
 
     let palette_section = build_palette_section(matugen_loading, matugen_palette, matugen_installed);
 
@@ -143,19 +156,31 @@ pub fn home_page<'a>(
         themes_col.into()
     };
 
-    let content = column![
+    let mut content = column![
         header,
         Space::new().height(32),
         cards,
         Space::new().height(40),
         palette_header,
         Space::new().height(12),
-        palette_section,
-        Space::new().height(40),
-        themes_title,
-        Space::new().height(12),
-        themes_section,
     ];
+
+    if let Some(panel) = confirm_panel {
+        content = content.push(panel);
+        content = content.push(Space::new().height(12));
+    }
+
+    if let Some(panel) = status_panel {
+        content = content.push(panel);
+        content = content.push(Space::new().height(12));
+    }
+
+    let content = content
+        .push(palette_section)
+        .push(Space::new().height(40))
+        .push(themes_title)
+        .push(Space::new().height(12))
+        .push(themes_section);
 
     scrollable(container(content).padding(32).width(Fill)).into()
 }
@@ -291,6 +316,120 @@ fn color_swatch<'a>(name: &str, hex: &str) -> Element<'a, Message> {
                 color: theme::BORDER,
                 width: 1.0,
                 radius: 6.0.into(),
+            },
+            ..Default::default()
+        })
+        .into()
+}
+
+/// Button that opens the "apply wallpaper colors system-wide" confirmation.
+/// Disabled when there is no matugen palette available.
+fn apply_to_system_button(enabled: bool) -> Element<'static, Message> {
+    let label = t("home.palette.apply_to_system");
+    let text_color = if enabled { theme::AMBER } else { theme::MUTE };
+    let border_color = if enabled { theme::AMBER } else { theme::BORDER };
+
+    let mut btn = button(text(label).size(12).color(text_color))
+        .padding([5, 14])
+        .style(move |_: &Theme, _| button::Style {
+            background: Some(Background::Color(theme::SURF)),
+            text_color,
+            border: Border {
+                color: border_color,
+                width: 1.0,
+                radius: 6.0.into(),
+            },
+            ..Default::default()
+        });
+
+    if enabled {
+        btn = btn.on_press(Message::Settings(SettingsMessage::ShowApplyToSystemConfirm));
+    }
+    btn.into()
+}
+
+/// Inline confirmation panel shown after the user clicks "Apply to system".
+fn build_confirm_panel<'a>() -> Element<'a, Message> {
+    let title = text(t("home.palette.apply_confirm_title"))
+        .size(14)
+        .color(theme::AMBER)
+        .font(iced::Font { weight: iced::font::Weight::Bold, ..Default::default() });
+
+    let body = text(t("home.palette.apply_confirm_body"))
+        .size(13)
+        .color(theme::DIM);
+
+    let yes = button(text(t("home.palette.apply_confirm_yes")).size(12).color(theme::BG))
+        .on_press(Message::Settings(SettingsMessage::ApplyToSystem))
+        .padding([6, 16])
+        .style(|_: &Theme, _| button::Style {
+            background: Some(Background::Color(theme::AMBER)),
+            text_color: theme::BG,
+            border: Border { radius: 6.0.into(), ..Default::default() },
+            ..Default::default()
+        });
+
+    let no = button(text(t("home.palette.apply_confirm_no")).size(12).color(theme::DIM))
+        .on_press(Message::Settings(SettingsMessage::HideApplyToSystemConfirm))
+        .padding([6, 16])
+        .style(|_: &Theme, _| button::Style {
+            background: None,
+            text_color: theme::DIM,
+            border: Border {
+                color: theme::BORDER,
+                width: 1.0,
+                radius: 6.0.into(),
+            },
+            ..Default::default()
+        });
+
+    let buttons = row![yes, no].spacing(8);
+
+    let content = column![title, Space::new().height(4), body, Space::new().height(12), buttons];
+
+    container(content)
+        .width(Fill)
+        .padding(16)
+        .style(|_: &Theme| container::Style {
+            background: Some(Background::Color(theme::SURF)),
+            border: Border {
+                color: theme::AMBER,
+                width: 1.5,
+                radius: 12.0.into(),
+            },
+            ..Default::default()
+        })
+        .into()
+}
+
+/// Success/failure status panel displayed after an apply run.
+fn build_status_panel<'a>(ok: bool, steps: &'a [String]) -> Element<'a, Message> {
+    let accent = if ok { theme::GREEN } else { Color::from_rgb(0.85, 0.35, 0.25) };
+    let title_key = if ok { "home.palette.apply_success" } else { "home.palette.apply_failed" };
+
+    let title = text(t(title_key))
+        .size(14)
+        .color(accent)
+        .font(iced::Font { weight: iced::font::Weight::Bold, ..Default::default() });
+
+    let mut col = column![title].spacing(4);
+    for step in steps {
+        col = col.push(
+            text(format!("• {}", step))
+                .size(12)
+                .color(theme::DIM),
+        );
+    }
+
+    container(col)
+        .width(Fill)
+        .padding(16)
+        .style(move |_: &Theme| container::Style {
+            background: Some(Background::Color(theme::SURF)),
+            border: Border {
+                color: Color { a: 0.5, ..accent },
+                width: 1.0,
+                radius: 12.0.into(),
             },
             ..Default::default()
         })

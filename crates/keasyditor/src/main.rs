@@ -12,6 +12,12 @@ use keasyditor_core::models::klassy::KlassyConfig;
 use keasyditor_core::models::kvantum::KvantumConfig;
 use keasyditor_core::undo_redo::UndoRedoStack;
 
+fn vec_to_map(v: &Option<Vec<(String, String)>>) -> HashMap<String, String> {
+    v.as_ref()
+        .map(|list| list.iter().cloned().collect())
+        .unwrap_or_default()
+}
+
 fn app_theme(_state: &App) -> Theme {
     Theme::custom(
         "KEasyDitor Dark".to_string(),
@@ -72,6 +78,8 @@ struct App {
     matugen_dark_palette: Option<Vec<(String, String)>>,
     matugen_light_palette: Option<Vec<(String, String)>>,
     prefer_dark_palette: bool,
+    show_apply_to_system_confirm: bool,
+    apply_to_system_status: Option<(bool, Vec<String>)>,
     // Availability
     klassy_installed: bool,
     kvantum_installed: bool,
@@ -183,6 +191,8 @@ impl App {
                 matugen_dark_palette: None,
                 matugen_light_palette: None,
                 prefer_dark_palette: true,
+                show_apply_to_system_confirm: false,
+                apply_to_system_status: None,
                 // Availability — detect synchronously (fast `which` calls)
                 klassy_installed: std::process::Command::new("which")
                     .arg("klassy-settings")
@@ -1048,6 +1058,61 @@ impl App {
                 SettingsMessage::ToggleDarkPalette(prefer_dark) => {
                     self.prefer_dark_palette = prefer_dark;
                 }
+                SettingsMessage::ShowApplyToSystemConfirm => {
+                    self.show_apply_to_system_confirm = true;
+                    self.apply_to_system_status = None;
+                }
+                SettingsMessage::HideApplyToSystemConfirm => {
+                    self.show_apply_to_system_confirm = false;
+                }
+                SettingsMessage::ApplyToSystem => {
+                    self.show_apply_to_system_confirm = false;
+                    let dark = vec_to_map(&self.matugen_dark_palette);
+                    let light = vec_to_map(&self.matugen_light_palette);
+                    if dark.is_empty() && light.is_empty() {
+                        self.apply_to_system_status = Some((
+                            false,
+                            vec![i18n::t("home.palette.apply_no_palette")],
+                        ));
+                        return Task::none();
+                    }
+                    let prefer_dark = self.prefer_dark_palette;
+                    return Task::perform(
+                        async move {
+                            use keasyditor_core::services::{
+                                MatugenPalette, WallpaperApplyService,
+                            };
+                            let palette = MatugenPalette {
+                                image_path: String::new(),
+                                dark,
+                                light,
+                            };
+                            let svc = WallpaperApplyService::new();
+                            let outcome = svc.apply(&palette, prefer_dark);
+                            (outcome.ok, outcome.steps)
+                        },
+                        |(ok, steps)| {
+                            Message::Settings(SettingsMessage::ApplyToSystemResult { ok, steps })
+                        },
+                    );
+                }
+                SettingsMessage::ApplyToSystemResult { ok, steps } => {
+                    self.apply_to_system_status = Some((ok, steps));
+                    // Re-discover themes in case Kvantum picked up the rewritten config.
+                    return Task::perform(
+                        async {
+                            let file_svc = keasyditor_core::services::FileService::new();
+                            let discovery =
+                                keasyditor_core::services::ThemeDiscoveryService::new(file_svc);
+                            discovery
+                                .discover_kvantum_themes()
+                                .into_iter()
+                                .map(|t| (t.name, t.path, t.is_system))
+                                .collect::<Vec<_>>()
+                        },
+                        |themes| Message::Kvantum(KvantumMessage::ThemesDiscovered(themes)),
+                    );
+                }
                 _ => {}
             },
 
@@ -1206,6 +1271,8 @@ impl App {
                     self.kvantum_installed,
                     self.matugen_installed,
                     self.active_kvantum_theme.as_deref(),
+                    self.show_apply_to_system_confirm,
+                    self.apply_to_system_status.as_ref(),
                 )
             }
             Page::Klassy => ui::klassy::editor::klassy_editor(
