@@ -27,7 +27,7 @@
 
 - Linux с KDE Plasma
 - [Klassy](https://github.com/paulmcauley/klassy) - для редактора оформления окон
-- [kvantum-qt5](https://github.com/tsujan/Kvantum) или `kvantum-qt6` - для редактора тем виджетов
+- [kvantum](https://github.com/tsujan/Kvantum) - для редактора тем виджетов
 - [matugen](https://github.com/InioX/matugen) *(опционально)* - извлечение цветов из обоев
 
 ---

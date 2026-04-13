@@ -27,7 +27,7 @@ A visual editor for KDE Plasma themes - [Klassy](https://github.com/paulmcauley/
 
 - Linux with KDE Plasma
 - [Klassy](https://github.com/paulmcauley/klassy) - for the window decoration editor
-- [kvantum-qt5](https://github.com/tsujan/Kvantum) or `kvantum-qt6` - for the widget theme editor
+- [kvantum](https://github.com/tsujan/Kvantum) - for the widget theme editor
 - [matugen](https://github.com/InioX/matugen) *(optional)* - wallpaper colour extraction
 
 ---
