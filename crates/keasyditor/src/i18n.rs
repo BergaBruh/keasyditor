@@ -14,8 +14,8 @@ const DEV_LOCALE_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/src/locale");
 
 /// Initialize locale. Call once at the start of main(), before iced starts.
 pub fn init() {
-    let (full_locale, lang) = detect_locale();
-    let map = build_map(&full_locale, &lang);
+    let candidates = detect_locales();
+    let map = build_map(&candidates);
     LOCALE.set(map).ok();
 }
 
@@ -30,54 +30,124 @@ pub fn t(key: &str) -> String {
 
 // ── Locale detection ──────────────────────────────────────────────────────────
 
-/// Returns (full_locale, lang):  "ru_RU.UTF-8" → ("ru_RU", "ru")
-fn detect_locale() -> (String, String) {
-    for var in ["LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"] {
-        if let Ok(val) = std::env::var(var) {
-            let val = val.trim().to_string();
-            if !val.is_empty() && val != "C" && val != "POSIX" {
-                // Strip encoding/modifier: "ru_RU.UTF-8@euro" → "ru_RU"
-                let locale = val
-                    .split(['.', '@'])
-                    .next()
-                    .unwrap_or("en")
-                    .to_string();
-                // Language code: "ru_RU" → "ru"
-                let lang = locale.split('_').next().unwrap_or("en").to_string();
-                if !locale.is_empty() {
-                    return (locale, lang);
-                }
+/// Return a priority-ordered list of `(full_locale, lang)` candidates
+/// collected from the standard gettext environment variables.
+///
+/// `LANGUAGE` is treated as a colon-separated list per gettext convention
+/// (e.g. `LANGUAGE=ru:en_US` → two candidates: `("ru","ru")`, `("en_US","en")`).
+/// All other vars contribute a single candidate each. Empty / `C` / `POSIX`
+/// values are skipped. Encoding and modifier suffixes (`.UTF-8`, `@euro`)
+/// are stripped.
+fn detect_locales() -> Vec<(String, String)> {
+    let values: Vec<Option<String>> = ["LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"]
+        .iter()
+        .map(|v| std::env::var(v).ok())
+        .collect();
+    parse_locale_env(&values)
+}
+
+/// Pure form of [`detect_locales`]: takes raw env values (in the order
+/// `LANGUAGE, LC_ALL, LC_MESSAGES, LANG`) and produces candidate pairs.
+/// Extracted so it can be unit-tested without touching process env.
+fn parse_locale_env(values: &[Option<String>]) -> Vec<(String, String)> {
+    let mut out: Vec<(String, String)> = Vec::new();
+    let mut push = |locale: String| {
+        if locale.is_empty() {
+            return;
+        }
+        let lang = locale.split('_').next().unwrap_or("").to_string();
+        let entry = (locale, lang);
+        if !out.contains(&entry) {
+            out.push(entry);
+        }
+    };
+    for val in values.iter().flatten() {
+        let val = val.trim();
+        if val.is_empty() || val == "C" || val == "POSIX" {
+            continue;
+        }
+        for piece in val.split(':') {
+            let piece = piece.trim();
+            if piece.is_empty() || piece == "C" || piece == "POSIX" {
+                continue;
             }
+            // Strip encoding/modifier: "ru_RU.UTF-8@euro" → "ru_RU"
+            let locale = piece
+                .split(['.', '@'])
+                .next()
+                .unwrap_or("")
+                .to_string();
+            push(locale);
         }
     }
-    ("en".to_string(), "en".to_string())
+    if out.is_empty() {
+        out.push(("en".to_string(), "en".to_string()));
+    }
+    out
 }
 
 // ── Map construction ──────────────────────────────────────────────────────────
 
 /// Build the final translation map:
 /// 1. Start with embedded English (so every key has a value).
-/// 2. Overlay the best matching locale file (exact → lang-only).
-fn build_map(full_locale: &str, lang: &str) -> HashMap<String, String> {
+/// 2. Walk the candidate list in priority order and overlay the first
+///    match. For each candidate, try the exact locale file
+///    (`ru_RU.toml`), then the language-only file (`ru.toml`), then any
+///    region variant of that language (`ru_*.toml`). The region-variant
+///    pass matters because `LANGUAGE=ru` yields `("ru","ru")` but we
+///    only ship `ru_RU.toml`.
+fn build_map(candidates: &[(String, String)]) -> HashMap<String, String> {
     let mut map = parse(EN_EMBEDDED);
 
-    // English is already loaded — nothing more to do.
-    if full_locale == "en" || full_locale.starts_with("en_") {
-        return map;
-    }
-
-    // Try exact locale (e.g. "ru_RU"), then language-only ("ru").
-    let loaded = read_locale_file(full_locale)
-        .or_else(|| if lang != full_locale { read_locale_file(lang) } else { None });
-
-    if let Some(content) = loaded {
-        // Overlay translated keys on top of the English base.
-        for (k, v) in parse(&content) {
-            map.insert(k, v);
+    for (full_locale, lang) in candidates {
+        // English is the embedded base — no file to load.
+        if full_locale == "en" || full_locale.starts_with("en_") {
+            return map;
+        }
+        let loaded = read_locale_file(full_locale)
+            .or_else(|| {
+                if lang != full_locale {
+                    read_locale_file(lang)
+                } else {
+                    None
+                }
+            })
+            .or_else(|| read_region_variant(lang));
+        if let Some(content) = loaded {
+            for (k, v) in parse(&content) {
+                map.insert(k, v);
+            }
+            return map;
         }
     }
 
     map
+}
+
+/// Find any `<lang>_<REGION>.toml` in the search path and return its
+/// content. Used as a last-resort fallback when the environment only
+/// gives us a language code (e.g. `LANGUAGE=ru`) but we ship locales
+/// keyed by region (e.g. `ru_RU.toml`).
+fn read_region_variant(lang: &str) -> Option<String> {
+    if lang.is_empty() {
+        return None;
+    }
+    let prefix = format!("{}_", lang);
+    for dir in search_dirs() {
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let file_name = entry.file_name();
+            let name = file_name.to_string_lossy();
+            if name.starts_with(&prefix) && name.ends_with(".toml")
+                && let Ok(content) = std::fs::read_to_string(entry.path())
+            {
+                return Some(content);
+            }
+        }
+    }
+    None
 }
 
 // ── File loading ──────────────────────────────────────────────────────────────
@@ -160,4 +230,51 @@ fn parse(content: &str) -> HashMap<String, String> {
         }
     }
     map
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn s(v: &str) -> Option<String> {
+        Some(v.to_string())
+    }
+
+    #[test]
+    fn parses_gettext_language_list() {
+        // LANGUAGE=ru:en_US — a gettext priority list, not a single locale.
+        let got = parse_locale_env(&[s("ru:en_US"), None, None, s("ru_RU.UTF-8")]);
+        assert_eq!(
+            got,
+            vec![
+                ("ru".to_string(), "ru".to_string()),
+                ("en_US".to_string(), "en".to_string()),
+                ("ru_RU".to_string(), "ru".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn strips_encoding_and_modifier() {
+        let got = parse_locale_env(&[None, None, None, s("de_DE.UTF-8@euro")]);
+        assert_eq!(got, vec![("de_DE".to_string(), "de".to_string())]);
+    }
+
+    #[test]
+    fn skips_posix_and_c() {
+        let got = parse_locale_env(&[s("C"), s("POSIX"), None, None]);
+        assert_eq!(got, vec![("en".to_string(), "en".to_string())]);
+    }
+
+    #[test]
+    fn defaults_to_english_when_empty() {
+        let got = parse_locale_env(&[None, None, None, None]);
+        assert_eq!(got, vec![("en".to_string(), "en".to_string())]);
+    }
+
+    #[test]
+    fn dedupes_repeated_locales() {
+        let got = parse_locale_env(&[s("ru_RU"), None, None, s("ru_RU.UTF-8")]);
+        assert_eq!(got, vec![("ru_RU".to_string(), "ru".to_string())]);
+    }
 }
