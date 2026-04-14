@@ -1,12 +1,123 @@
 use std::collections::HashMap;
 
-use iced::widget::{canvas, column, text, Space};
-use iced::{mouse, Color, Element, Fill, Point, Rectangle, Renderer, Size, Theme};
+use iced::widget::{button, canvas, column, container, image, row, text, Space};
+use iced::{mouse, Background, Border, Color, Element, Fill, Length, Point, Rectangle, Renderer, Size, Theme};
 
-use crate::message::Message;
+use crate::i18n::t;
+use crate::message::{KvantumMessage, Message};
 use crate::theme as pal;
 use crate::ui::widgets::canvas_utils::rounded_rect;
 use crate::ui::widgets::color_utils::{adjust_color, blend, read_color};
+
+/// Real pixel-accurate preview section: a capture button + image area.
+/// The image is the most recent `kvantumpreview` screenshot (rendered via
+/// the actual Kvantum Qt style plugin), so what users see here matches
+/// what their running Qt applications will show.
+pub fn real_preview_section<'a>(
+    png_bytes: Option<&'a [u8]>,
+    capturing: bool,
+    error: Option<&'a str>,
+) -> Element<'a, Message> {
+    let title = text(t("kvantum.real_preview.title"))
+        .size(16)
+        .color(pal::TEXT_ON)
+        .font(iced::Font {
+            weight: iced::font::Weight::Bold,
+            ..Default::default()
+        });
+
+    let btn_label = if capturing {
+        t("kvantum.real_preview.capturing")
+    } else {
+        t("kvantum.real_preview.capture")
+    };
+
+    let mut btn = button(
+        text(btn_label)
+            .size(12)
+            .color(if capturing { pal::MUTE } else { pal::BG }),
+    )
+    .padding([6, 14])
+    .style(move |_: &Theme, _| button::Style {
+        background: Some(Background::Color(if capturing { pal::SURF2 } else { pal::GREEN })),
+        text_color: if capturing { pal::MUTE } else { pal::BG },
+        border: Border { radius: 6.0.into(), ..Default::default() },
+        ..Default::default()
+    });
+
+    if !capturing {
+        btn = btn.on_press(Message::Kvantum(KvantumMessage::CaptureRealPreview));
+    }
+
+    let header = row![title, Space::new().width(Fill), btn].align_y(iced::Alignment::Center);
+
+    let body: Element<'a, Message> = if let Some(bytes) = png_bytes {
+        // `Handle::from_memory` clones the bytes into an Iced-owned `Cow`,
+        // so there's no path-based caching and every re-render sees the
+        // fresh buffer.
+        let handle = image::Handle::from_bytes(bytes.to_vec());
+        container(
+            image(handle)
+                .width(Fill)
+                .content_fit(iced::ContentFit::Contain),
+        )
+        .width(Fill)
+        .height(Length::Fixed(500.0))
+        .padding(8)
+        .style(|_: &Theme| container::Style {
+            background: Some(Background::Color(pal::SURF)),
+            border: Border {
+                color: pal::BORDER,
+                width: 1.0,
+                radius: 8.0.into(),
+            },
+            ..Default::default()
+        })
+        .into()
+    } else if let Some(err) = error {
+        container(
+            column![
+                text(t("kvantum.real_preview.error"))
+                    .size(13)
+                    .color(Color::from_rgb(0.85, 0.35, 0.25)),
+                Space::new().height(4),
+                text(err.to_string()).size(12).color(pal::MUTE),
+            ]
+        )
+        .width(Fill)
+        .padding(16)
+        .style(|_: &Theme| container::Style {
+            background: Some(Background::Color(pal::SURF)),
+            border: Border {
+                color: Color { a: 0.4, ..Color::from_rgb(0.85, 0.35, 0.25) },
+                width: 1.0,
+                radius: 8.0.into(),
+            },
+            ..Default::default()
+        })
+        .into()
+    } else {
+        container(
+            text(t("kvantum.real_preview.empty"))
+                .size(12)
+                .color(pal::MUTE),
+        )
+        .width(Fill)
+        .padding(16)
+        .style(|_: &Theme| container::Style {
+            background: Some(Background::Color(pal::SURF)),
+            border: Border {
+                color: pal::BORDER,
+                width: 1.0,
+                radius: 8.0.into(),
+            },
+            ..Default::default()
+        })
+        .into()
+    };
+
+    column![header, Space::new().height(8), body].into()
+}
 
 // ── Public entry point ───────────────────────────────────────────────────────
 

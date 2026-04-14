@@ -52,14 +52,6 @@ impl ProcessService {
         })
     }
 
-    /// Check whether an executable is available on the system PATH.
-    pub fn is_available(&self, executable: &str) -> bool {
-        Command::new("which")
-            .arg(executable)
-            .output()
-            .is_ok_and(|o| o.status.success())
-    }
-
     /// Apply a Klassy preset by invoking `klassy-settings`.
     pub fn apply_klassy_preset(&self, preset_name: &str) -> io::Result<ProcessResult> {
         self.run("klassy-settings", &["--preset", preset_name])
@@ -70,13 +62,60 @@ impl ProcessService {
         self.run("kvantummanager", &["--set", theme_name])
     }
 
-    /// Apply a Plasma color scheme by name (e.g. `MatugenDark`).
+    /// Force-apply a Plasma color scheme by routing through a different
+    /// intermediate scheme first, then switching to the target. This is
+    /// the only reliable way to force running Qt apps to re-read a color
+    /// scheme whose file contents were rewritten under the same name:
+    /// `plasma-apply-colorscheme` is a no-op when the target name matches
+    /// the currently-active scheme (it prints "already in use" and skips
+    /// both the `KGlobalSettings.notifyChange` broadcast and any
+    /// `kdeglobals` update). Routing through an intermediate scheme makes
+    /// both calls real switches, so the signal actually goes out.
     ///
-    /// Tries `plasma-apply-colorscheme` first, then falls back to direct
-    /// invocation of `lookandfeeltool` with a minimal colorscheme switch —
-    /// though on every modern Plasma 5/6 install the first one exists.
-    pub fn apply_plasma_colorscheme(&self, scheme_name: &str) -> io::Result<ProcessResult> {
+    /// Picks the first non-matching scheme from
+    /// `["BreezeLight", "BreezeDark", "Breeze"]` as the intermediate —
+    /// these ship with the base Plasma desktop and are effectively always
+    /// present. If none of those are installed, falls back to a direct
+    /// apply of `scheme_name` (best effort).
+    pub fn apply_plasma_colorscheme_forced(
+        &self,
+        scheme_name: &str,
+    ) -> io::Result<ProcessResult> {
+        const FALLBACKS: &[&str] = &["BreezeLight", "BreezeDark", "Breeze"];
+        for intermediate in FALLBACKS {
+            if *intermediate == scheme_name {
+                continue;
+            }
+            if let Ok(r) = self.run("plasma-apply-colorscheme", &[intermediate])
+                && r.is_success()
+            {
+                // Intermediate switched successfully — now switch back.
+                return self.run("plasma-apply-colorscheme", &[scheme_name]);
+            }
+        }
+        // No intermediate worked; best-effort direct apply.
         self.run("plasma-apply-colorscheme", &[scheme_name])
+    }
+
+    /// Write `[General] ColorSchemeHash=<hash>` into `~/.config/kdeglobals`
+    /// via `kwriteconfig6`. Must be called after a Plasma color-scheme file
+    /// changes in place, so running Qt applications notice a new hash on
+    /// their next refresh and actually re-read the scheme. `plasma-apply-
+    /// colorscheme` does NOT update this field itself (only `ColorScheme=`),
+    /// which is why we maintain it manually.
+    pub fn write_kdeglobals_colorscheme_hash(&self, hash: &str) -> io::Result<ProcessResult> {
+        self.run(
+            "kwriteconfig6",
+            &[
+                "--file",
+                "kdeglobals",
+                "--group",
+                "General",
+                "--key",
+                "ColorSchemeHash",
+                hash,
+            ],
+        )
     }
 
     /// Reconfigure KWin so that Klassy decoration changes take effect.
@@ -150,15 +189,4 @@ mod tests {
         assert!(result.is_err());
     }
 
-    #[test]
-    fn is_available_echo() {
-        let svc = ProcessService::new();
-        assert!(svc.is_available("echo"));
-    }
-
-    #[test]
-    fn is_available_nonexistent() {
-        let svc = ProcessService::new();
-        assert!(!svc.is_available("__nonexistent_command_12345__"));
-    }
 }

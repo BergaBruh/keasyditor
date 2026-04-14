@@ -71,6 +71,15 @@ struct App {
     kvantum_expanded: HashSet<String>,
     kvantum_loading: bool,
     kvantum_error: Option<String>,
+    /// PNG bytes of the most recent `kvantumpreview` screenshot capture.
+    /// Displayed via `image::Handle::from_memory` so Iced doesn't cache by
+    /// path and miss updates when the file is rewritten.
+    kvantum_real_preview_png: Option<Vec<u8>>,
+    /// `true` while a capture is in flight — used to disable the button
+    /// and show a "capturing…" indicator.
+    kvantum_real_preview_capturing: bool,
+    /// Last capture error, or `None` on success / no attempt yet.
+    kvantum_real_preview_error: Option<String>,
     // Settings
     auto_apply: bool,
     reload_status: Option<String>,
@@ -184,6 +193,9 @@ impl App {
                 kvantum_expanded,
                 kvantum_loading: false,
                 kvantum_error: None,
+                kvantum_real_preview_png: None,
+                kvantum_real_preview_capturing: false,
+                kvantum_real_preview_error: None,
                 // Settings
                 auto_apply: false,
                 reload_status: None,
@@ -794,6 +806,10 @@ impl App {
                                 match svc.apply_kvantum_theme(&name) {
                                     Ok(result) => {
                                         if result.is_success() {
+                                            // Derive & apply a matching Plasma color
+                                            // scheme so KDE surfaces stay in sync.
+                                            let _ = keasyditor_core::services::sync_plasma_scheme_from_kvantum_name(&name);
+                                            let _ = svc.reconfigure_kwin();
                                             Ok(result.stdout)
                                         } else {
                                             Err(result.stderr)
@@ -934,7 +950,14 @@ impl App {
                         async move {
                             let svc = keasyditor_core::services::ProcessService::new();
                             match svc.apply_kvantum_theme(&theme_name) {
-                                Ok(r) if r.is_success() => Ok(theme_name),
+                                Ok(r) if r.is_success() => {
+                                    // Also sync a matching Plasma color scheme so the
+                                    // system Colors panel / window decorations follow
+                                    // the Qt widget theme.
+                                    let _ = keasyditor_core::services::sync_plasma_scheme_from_kvantum_name(&theme_name);
+                                    let _ = svc.reconfigure_kwin();
+                                    Ok(theme_name)
+                                }
                                 Ok(r) => Err(format!("Failed: {}", r.stderr)),
                                 Err(e) => Err(format!("Error: {}", e)),
                             }
@@ -963,6 +986,42 @@ impl App {
                         .map(|(name, _, is_system)| (name.clone(), *is_system))
                         .collect();
                     self.kvantum_discovered_themes = themes;
+                }
+                KvantumMessage::CaptureRealPreview => {
+                    if self.kvantum_real_preview_capturing {
+                        return Task::none();
+                    }
+                    self.kvantum_real_preview_capturing = true;
+                    self.kvantum_real_preview_error = None;
+                    return Task::perform(
+                        async {
+                            // Run the blocking capture pipeline on a
+                            // dedicated thread so we don't block tokio.
+                            tokio::task::spawn_blocking(|| {
+                                let svc =
+                                    keasyditor_core::services::KvantumPreviewCaptureService::new();
+                                svc.capture()
+                            })
+                            .await
+                            .map_err(|e| e.to_string())
+                            .and_then(|r| r.map(|c| c.png_bytes))
+                        },
+                        |result| {
+                            Message::Kvantum(KvantumMessage::RealPreviewCaptured(result))
+                        },
+                    );
+                }
+                KvantumMessage::RealPreviewCaptured(result) => {
+                    self.kvantum_real_preview_capturing = false;
+                    match result {
+                        Ok(bytes) => {
+                            self.kvantum_real_preview_png = Some(bytes);
+                            self.kvantum_real_preview_error = None;
+                        }
+                        Err(e) => {
+                            self.kvantum_real_preview_error = Some(e);
+                        }
+                    }
                 }
             },
 
@@ -1018,6 +1077,8 @@ impl App {
                                 match svc.apply_kvantum_theme(&name) {
                                     Ok(result) => {
                                         if result.is_success() {
+                                            let _ = keasyditor_core::services::sync_plasma_scheme_from_kvantum_name(&name);
+                                            let _ = svc.reconfigure_kwin();
                                             Ok("Kvantum reloaded successfully.".to_string())
                                         } else {
                                             Err(format!("Error: {}", result.stderr))
@@ -1056,6 +1117,10 @@ impl App {
                     self.prefer_dark_palette = is_dark;
                 }
                 SettingsMessage::ToggleDarkPalette(prefer_dark) => {
+                    // Pure preview selector: picks which matugen variant
+                    // (dark or light palette) will be used by the next
+                    // "Apply wallpaper colors" click. No system-level
+                    // action here — applying happens explicitly.
                     self.prefer_dark_palette = prefer_dark;
                 }
                 SettingsMessage::ShowApplyToSystemConfirm => {
@@ -1303,6 +1368,9 @@ impl App {
                 self.kvantum_loading,
                 self.kvantum_error.as_deref(),
                 self.save_flash,
+                self.kvantum_real_preview_png.as_deref(),
+                self.kvantum_real_preview_capturing,
+                self.kvantum_real_preview_error.as_deref(),
             ),
             Page::Settings => ui::settings::settings_page(
                 &self.reload_status,

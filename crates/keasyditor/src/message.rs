@@ -142,6 +142,12 @@ pub enum KvantumMessage {
     ApplySystemTheme(String),
     SystemThemeApplied(Result<String, String>),
     ThemesDiscovered(Vec<(String, String, bool)>),
+    /// User requested a fresh pixel-accurate preview capture via
+    /// `kvantumpreview` + `spectacle`.
+    CaptureRealPreview,
+    /// Async result of the capture pipeline. On success, carries the PNG
+    /// bytes so Iced can render them via `image::Handle::from_memory`.
+    RealPreviewCaptured(Result<Vec<u8>, String>),
     // Async results
     ThemeLoaded(Result<String, String>),
     Saved(Result<(), String>),

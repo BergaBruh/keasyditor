@@ -241,7 +241,7 @@ mod tests {
         }"##;
         let palette = parse_matugen_json(json, "img.png").unwrap();
         assert_eq!(palette.dark.get("primary"), Some(&"#aabbcc".to_string()));
-        assert!(palette.light.get("primary").is_none());
+        assert!(!palette.light.contains_key("primary"));
     }
 
     #[test]
@@ -277,15 +277,15 @@ mod tests {
     #[test]
     fn extract_image_from_content_file_url() {
         // Uses a path that actually exists
-        let content = format!("Image=file:///proc/self/exe\n");
-        let result = extract_image_from_content(&content);
+        let content = "Image=file:///proc/self/exe\n";
+        let result = extract_image_from_content(content);
         assert_eq!(result, Some("/proc/self/exe".to_string()));
     }
 
     #[test]
     fn extract_image_from_content_plain_path() {
         let content = "Image=/proc/self/exe\n";
-        let result = extract_image_from_content(&content);
+        let result = extract_image_from_content(content);
         assert_eq!(result, Some("/proc/self/exe".to_string()));
     }
 

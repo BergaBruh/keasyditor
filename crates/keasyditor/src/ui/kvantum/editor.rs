@@ -6,7 +6,7 @@ use iced::{Background, Border, Color, Element, Fill, Length, Theme};
 use crate::i18n::t;
 use crate::message::{KvantumMessage, Message};
 use crate::theme;
-use crate::ui::kvantum::preview::kvantum_preview;
+use crate::ui::kvantum::preview::{kvantum_preview, real_preview_section};
 use crate::ui::kvantum::svg_panel::svg_panel;
 use crate::ui::kvantum::tabs::kvantum_tab_content;
 use crate::ui::widgets::topbar::editor_topbar;
@@ -39,6 +39,9 @@ pub fn kvantum_editor<'a>(
     loading: bool,
     error: Option<&'a str>,
     save_flash: bool,
+    real_preview_png: Option<&'a [u8]>,
+    real_preview_capturing: bool,
+    real_preview_error: Option<&'a str>,
 ) -> Element<'a, Message> {
     // If loading, show a loading indicator
     if loading {
@@ -141,11 +144,18 @@ pub fn kvantum_editor<'a>(
         ..Default::default()
     });
 
-    // Right panel: preview (scrollable), flex 2
+    // Right panel: real kvantumpreview screenshot + canvas mock (scrollable),
+    // flex 2
     let right_content = scrollable(
-        container(kvantum_preview(slider_values, toggle_values, text_input_values))
-            .padding(16)
-            .width(Fill),
+        container(
+            column![
+                real_preview_section(real_preview_png, real_preview_capturing, real_preview_error),
+                Space::new().height(16),
+                kvantum_preview(slider_values, toggle_values, text_input_values),
+            ]
+        )
+        .padding(16)
+        .width(Fill),
     )
     .height(Fill);
 
