@@ -147,6 +147,7 @@ kvantum.real_preview.capture = "Capture"
 kvantum.real_preview.capturing = "Capturing…"
 kvantum.real_preview.empty = "Click Capture to take a pixel-accurate screenshot of the current active Kvantum theme via kvantumpreview + spectacle. Make sure you've saved and applied the theme first."
 kvantum.real_preview.error = "Capture failed"
+kvantum.preview.note = "Palette-only mock — custom SVG art and per-widget shapes are not rendered here. Some colors may differ from the real Kvantum output."
 
 kvantum.colors.window = "Window"
 kvantum.colors.base = "Base"

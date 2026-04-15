@@ -147,6 +147,7 @@ kvantum.real_preview.capture = "Захватить"
 kvantum.real_preview.capturing = "Захват…"
 kvantum.real_preview.empty = "Нажмите «Захватить», чтобы получить пиксель-точный скриншот текущей активной Kvantum-темы через kvantumpreview + spectacle. Сохраните и примените тему перед захватом."
 kvantum.real_preview.error = "Ошибка захвата"
+kvantum.preview.note = "Только палитра — SVG-арт и формы виджетов здесь не отображаются. Часть цветов может отличаться от реального Kvantum."
 
 kvantum.colors.window = "Окно"
 kvantum.colors.base = "Базовый"

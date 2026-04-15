@@ -189,8 +189,12 @@ pub fn kvantum_preview<'a>(
             .size(16)
             .color(pal::TEXT_ON)
             .font(iced::Font { weight: iced::font::Weight::Bold, ..Default::default() }),
-        Space::new().height(12),
-        canvas(preview).width(Fill).height(600),
+        Space::new().height(4),
+        text(t("kvantum.preview.note"))
+            .size(11)
+            .color(pal::MUTE),
+        Space::new().height(8),
+        canvas(preview).width(Fill).height(760),
     ]
     .into()
 }
