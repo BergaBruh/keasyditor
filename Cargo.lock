@@ -2166,7 +2166,7 @@ dependencies = [
 
 [[package]]
 name = "keasyditor"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "iced",
  "iced_aw",
@@ -2177,7 +2177,7 @@ dependencies = [
 
 [[package]]
 name = "keasyditor-core"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "dirs",
  "quick-xml 0.37.5",
