@@ -71,10 +71,13 @@ struct App {
     kvantum_expanded: HashSet<String>,
     kvantum_loading: bool,
     kvantum_error: Option<String>,
-    /// PNG bytes of the most recent `kvantumpreview` screenshot capture.
-    /// Displayed via `image::Handle::from_memory` so Iced doesn't cache by
-    /// path and miss updates when the file is rewritten.
-    kvantum_real_preview_png: Option<Vec<u8>>,
+    /// Cached `image::Handle` for the most recent `kvantumpreview` screenshot.
+    /// Stored as a pre-built handle (not raw bytes) because every call to
+    /// `Handle::from_bytes` allocates a fresh unique `Id`, which invalidates
+    /// Iced's GPU image cache and causes visible flicker on every re-render.
+    /// Building it once here keeps the same id across frames; `Clone` is cheap
+    /// (the inner `Bytes` is `Arc`-backed).
+    kvantum_real_preview_handle: Option<iced::widget::image::Handle>,
     /// `true` while a capture is in flight — used to disable the button
     /// and show a "capturing…" indicator.
     kvantum_real_preview_capturing: bool,
@@ -193,7 +196,7 @@ impl App {
                 kvantum_expanded,
                 kvantum_loading: false,
                 kvantum_error: None,
-                kvantum_real_preview_png: None,
+                kvantum_real_preview_handle: None,
                 kvantum_real_preview_capturing: false,
                 kvantum_real_preview_error: None,
                 // Settings
@@ -1020,7 +1023,8 @@ impl App {
                     self.kvantum_real_preview_capturing = false;
                     match result {
                         Ok(bytes) => {
-                            self.kvantum_real_preview_png = Some(bytes);
+                            self.kvantum_real_preview_handle =
+                                Some(iced::widget::image::Handle::from_bytes(bytes));
                             self.kvantum_real_preview_error = None;
                         }
                         Err(e) => {
@@ -1373,7 +1377,7 @@ impl App {
                 self.kvantum_loading,
                 self.kvantum_error.as_deref(),
                 self.save_flash,
-                self.kvantum_real_preview_png.as_deref(),
+                self.kvantum_real_preview_handle.as_ref(),
                 self.kvantum_real_preview_capturing,
                 self.kvantum_real_preview_error.as_deref(),
             ),

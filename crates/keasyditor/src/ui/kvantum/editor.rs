@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use iced::widget::{button, column, container, row, rule, scrollable, text, Space};
+use iced::widget::{button, column, container, image, row, rule, scrollable, text, Space};
 use iced::{Background, Border, Color, Element, Fill, Length, Theme};
 
 use crate::i18n::t;
@@ -39,7 +39,7 @@ pub fn kvantum_editor<'a>(
     loading: bool,
     error: Option<&'a str>,
     save_flash: bool,
-    real_preview_png: Option<&'a [u8]>,
+    real_preview_handle: Option<&'a image::Handle>,
     real_preview_capturing: bool,
     real_preview_error: Option<&'a str>,
 ) -> Element<'a, Message> {
@@ -149,7 +149,7 @@ pub fn kvantum_editor<'a>(
     let right_content = scrollable(
         container(
             column![
-                real_preview_section(real_preview_png, real_preview_capturing, real_preview_error),
+                real_preview_section(real_preview_handle, real_preview_capturing, real_preview_error),
                 Space::new().height(16),
                 kvantum_preview(slider_values, toggle_values, text_input_values),
             ]

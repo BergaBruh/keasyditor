@@ -14,7 +14,7 @@ use crate::ui::widgets::color_utils::{adjust_color, blend, read_color};
 /// the actual Kvantum Qt style plugin), so what users see here matches
 /// what their running Qt applications will show.
 pub fn real_preview_section<'a>(
-    png_bytes: Option<&'a [u8]>,
+    preview_handle: Option<&'a image::Handle>,
     capturing: bool,
     error: Option<&'a str>,
 ) -> Element<'a, Message> {
@@ -51,13 +51,13 @@ pub fn real_preview_section<'a>(
 
     let header = row![title, Space::new().width(Fill), btn].align_y(iced::Alignment::Center);
 
-    let body: Element<'a, Message> = if let Some(bytes) = png_bytes {
-        // `Handle::from_memory` clones the bytes into an Iced-owned `Cow`,
-        // so there's no path-based caching and every re-render sees the
-        // fresh buffer.
-        let handle = image::Handle::from_bytes(bytes.to_vec());
+    let body: Element<'a, Message> = if let Some(handle) = preview_handle {
+        // Clone the cached `Handle` (cheap — inner `Bytes` is `Arc`-backed).
+        // Building a new `Handle::from_bytes` here would mint a fresh unique
+        // id each render and make Iced re-upload the image to the GPU, which
+        // manifests as a visible flicker on every mouse/keyboard event.
         container(
-            image(handle)
+            image(handle.clone())
                 .width(Fill)
                 .content_fit(iced::ContentFit::Contain),
         )
