@@ -71,6 +71,15 @@ struct App {
     kvantum_expanded: HashSet<String>,
     kvantum_loading: bool,
     kvantum_error: Option<String>,
+    /// Persistent tessellation cache for the mockup `WidgetPreview` canvas.
+    /// Without it, every rerender re-tessellates ~30 widget sections through
+    /// lyon on the main thread; with it, geometry is reused until a relevant
+    /// field actually changes (see `preview_fingerprint` in `ui/kvantum/preview.rs`).
+    kvantum_preview_cache: iced::widget::canvas::Cache,
+    /// Last fingerprint of the preview's input fields — compared in `view` to
+    /// decide whether to `clear()` the cache. `Cell` because the check lives
+    /// in `view`, which only has `&self`.
+    kvantum_preview_cache_key: std::cell::Cell<u64>,
     /// Cached `image::Handle` for the most recent `kvantumpreview` screenshot.
     /// Stored as a pre-built handle (not raw bytes) because every call to
     /// `Handle::from_bytes` allocates a fresh unique `Id`, which invalidates
@@ -196,6 +205,8 @@ impl App {
                 kvantum_expanded,
                 kvantum_loading: false,
                 kvantum_error: None,
+                kvantum_preview_cache: iced::widget::canvas::Cache::new(),
+                kvantum_preview_cache_key: std::cell::Cell::new(0),
                 kvantum_real_preview_handle: None,
                 kvantum_real_preview_capturing: false,
                 kvantum_real_preview_error: None,
@@ -1380,6 +1391,8 @@ impl App {
                 self.kvantum_real_preview_handle.as_ref(),
                 self.kvantum_real_preview_capturing,
                 self.kvantum_real_preview_error.as_deref(),
+                &self.kvantum_preview_cache,
+                &self.kvantum_preview_cache_key,
             ),
             Page::Settings => ui::settings::settings_page(
                 &self.reload_status,

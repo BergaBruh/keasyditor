@@ -1,6 +1,7 @@
+use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
 
-use iced::widget::{button, column, container, image, row, rule, scrollable, text, Space};
+use iced::widget::{button, canvas, column, container, image, row, rule, scrollable, text, Space};
 use iced::{Background, Border, Color, Element, Fill, Length, Theme};
 
 use crate::i18n::t;
@@ -42,6 +43,8 @@ pub fn kvantum_editor<'a>(
     real_preview_handle: Option<&'a image::Handle>,
     real_preview_capturing: bool,
     real_preview_error: Option<&'a str>,
+    preview_cache: &'a canvas::Cache,
+    preview_cache_key: &'a Cell<u64>,
 ) -> Element<'a, Message> {
     // If loading, show a loading indicator
     if loading {
@@ -151,7 +154,7 @@ pub fn kvantum_editor<'a>(
             column![
                 real_preview_section(real_preview_handle, real_preview_capturing, real_preview_error),
                 Space::new().height(16),
-                kvantum_preview(slider_values, toggle_values, text_input_values),
+                kvantum_preview(slider_values, toggle_values, text_input_values, preview_cache, preview_cache_key),
             ]
         )
         .padding(16)

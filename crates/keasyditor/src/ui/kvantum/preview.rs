@@ -1,3 +1,4 @@
+use std::cell::Cell;
 use std::collections::HashMap;
 
 use iced::widget::{button, canvas, column, container, image, row, text, Space};
@@ -125,6 +126,8 @@ pub fn kvantum_preview<'a>(
     slider_values: &'a HashMap<String, f32>,
     toggle_values: &'a HashMap<String, bool>,
     text_input_values: &'a HashMap<String, String>,
+    preview_cache: &'a canvas::Cache,
+    preview_cache_key: &Cell<u64>,
 ) -> Element<'a, Message> {
     let contrast = slider_values.get("kvantum.general.contrast").copied().unwrap_or(10.0) / 10.0;
     let intensity = slider_values.get("kvantum.general.intensity").copied().unwrap_or(10.0) / 10.0;
@@ -136,6 +139,7 @@ pub fn kvantum_preview<'a>(
     let sl = |key: &str, def: f32| slider_values.get(key).copied().unwrap_or(def);
 
     let preview = WidgetPreview {
+        cache: preview_cache,
         // Colors
         window_color:        c("kvantum.color.window.color",        Color::from_rgb(0.14, 0.14, 0.14)),
         base_color:          c("kvantum.color.base.color",          Color::from_rgb(0.12, 0.12, 0.12)),
@@ -184,6 +188,15 @@ pub fn kvantum_preview<'a>(
         arrow_size:          sl("kvantum.general.arrow_size", 9.0),
     };
 
+    // Cache invalidation: if any field affecting the tessellated output has
+    // changed since the last frame, clear the geometry cache so it rebuilds.
+    // This is far cheaper than re-tessellating ~30 widget sections every frame.
+    let new_key = preview_fingerprint(&preview);
+    if preview_cache_key.get() != new_key {
+        preview_cache.clear();
+        preview_cache_key.set(new_key);
+    }
+
     column![
         text("Preview")
             .size(16)
@@ -201,7 +214,12 @@ pub fn kvantum_preview<'a>(
 
 // ── WidgetPreview struct ─────────────────────────────────────────────────────
 
-struct WidgetPreview {
+struct WidgetPreview<'a> {
+    /// Borrowed tessellation cache owned by `App`. `canvas::Cache::draw`
+    /// re-runs the draw closure only when the cache is empty, the size
+    /// changes, or it was explicitly cleared — so as long as nothing in the
+    /// fields below changes, GPU geometry is reused frame-to-frame.
+    cache: &'a canvas::Cache,
     // Colors
     window_color: Color,
     base_color: Color,
@@ -250,7 +268,68 @@ struct WidgetPreview {
     arrow_size: f32,
 }
 
-impl<Message> canvas::Program<Message> for WidgetPreview {
+/// Fingerprint of every `WidgetPreview` field that affects the tessellated
+/// output. Used by `kvantum_preview` to decide whether the `canvas::Cache`
+/// needs to be invalidated on this frame. `f32` is hashed via its bit
+/// pattern so NaN / -0.0 are handled deterministically.
+///
+/// **Maintenance:** if you add a field to `WidgetPreview` that influences
+/// drawing, also hash it here — otherwise the cache will serve stale
+/// geometry after that field changes.
+fn preview_fingerprint(p: &WidgetPreview<'_>) -> u64 {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+    let mut h = DefaultHasher::new();
+    let hf = |h: &mut DefaultHasher, v: f32| v.to_bits().hash(h);
+    let hc = |h: &mut DefaultHasher, col: Color| {
+        col.r.to_bits().hash(h);
+        col.g.to_bits().hash(h);
+        col.b.to_bits().hash(h);
+        col.a.to_bits().hash(h);
+    };
+    hc(&mut h, p.window_color);
+    hc(&mut h, p.base_color);
+    hc(&mut h, p.alt_base_color);
+    hc(&mut h, p.button_color);
+    hc(&mut h, p.light_color);
+    hc(&mut h, p.mid_color);
+    hc(&mut h, p.dark_color);
+    hc(&mut h, p.highlight_color);
+    hc(&mut h, p.text_color);
+    hc(&mut h, p.window_text_color);
+    hc(&mut h, p.button_text_color);
+    hc(&mut h, p.disabled_text_color);
+    hc(&mut h, p.highlight_text_color);
+    hc(&mut h, p.link_color);
+    hc(&mut h, p.link_visited_color);
+    p.composite.hash(&mut h);
+    p.translucent_windows.hash(&mut h);
+    p.blurring.hash(&mut h);
+    p.popup_blurring.hash(&mut h);
+    p.animate_states.hash(&mut h);
+    p.fill_rubberband.hash(&mut h);
+    p.no_window_pattern.hash(&mut h);
+    p.shadowless_popup.hash(&mut h);
+    p.scroll_arrows.hash(&mut h);
+    hf(&mut h, p.reduce_window_opacity);
+    hf(&mut h, p.reduce_menu_opacity);
+    hf(&mut h, p.small_icon_size);
+    hf(&mut h, p.large_icon_size);
+    hf(&mut h, p.slider_width);
+    hf(&mut h, p.slider_handle_width);
+    hf(&mut h, p.slider_handle_length);
+    hf(&mut h, p.layout_spacing);
+    hf(&mut h, p.layout_margin);
+    hf(&mut h, p.scrollbar_width);
+    hf(&mut h, p.progress_thickness);
+    hf(&mut h, p.menu_shadow_depth);
+    hf(&mut h, p.tooltip_shadow_depth);
+    hf(&mut h, p.splitter_width);
+    hf(&mut h, p.arrow_size);
+    h.finish()
+}
+
+impl<Message> canvas::Program<Message> for WidgetPreview<'_> {
     type State = ();
 
     fn draw(
@@ -261,8 +340,7 @@ impl<Message> canvas::Program<Message> for WidgetPreview {
         bounds: Rectangle,
         _cursor: mouse::Cursor,
     ) -> Vec<canvas::Geometry> {
-        let mut frame = canvas::Frame::new(renderer, bounds.size());
-
+        let geometry = self.cache.draw(renderer, bounds.size(), |frame| {
         let m = self.layout_margin.clamp(2.0, 20.0) + 8.0;
         let w = bounds.width - 2.0 * m - self.scrollbar_width.clamp(4.0, 24.0) - 8.0;
 
@@ -313,61 +391,61 @@ impl<Message> canvas::Program<Message> for WidgetPreview {
         let gap = self.layout_spacing.clamp(2.0, 16.0);
 
         // — Push Buttons —
-        y = section_label(&mut frame, m, y, w, "Push Buttons", self.window_text_color);
-        y = draw_buttons(&mut frame, m, y, w, self);
+        y = section_label(frame, m, y, w, "Push Buttons", self.window_text_color);
+        y = draw_buttons(frame, m, y, w, self);
 
         // — Text Input —
-        y = section_label(&mut frame, m, y + gap, w, "Text Input", self.window_text_color);
-        y = draw_text_input(&mut frame, m, y + gap, w, self);
+        y = section_label(frame, m, y + gap, w, "Text Input", self.window_text_color);
+        y = draw_text_input(frame, m, y + gap, w, self);
 
         // — Checkboxes & Radio —
-        y = section_label(&mut frame, m, y + gap, w, "Checkboxes & Radio", self.window_text_color);
-        y = draw_checkboxes(&mut frame, m, y + gap, self);
-        y = draw_radio_buttons(&mut frame, m, y + gap, self);
+        y = section_label(frame, m, y + gap, w, "Checkboxes & Radio", self.window_text_color);
+        y = draw_checkboxes(frame, m, y + gap, self);
+        y = draw_radio_buttons(frame, m, y + gap, self);
 
         // — List Selection —
-        y = section_label(&mut frame, m, y + gap, w, "List Selection", self.window_text_color);
-        y = draw_list_items(&mut frame, m, y + gap, w, self);
+        y = section_label(frame, m, y + gap, w, "List Selection", self.window_text_color);
+        y = draw_list_items(frame, m, y + gap, w, self);
 
         // — Tabs —
-        y = section_label(&mut frame, m, y + gap, w, "Tabs", self.window_text_color);
-        y = draw_tabs(&mut frame, m, y + gap, w, self);
+        y = section_label(frame, m, y + gap, w, "Tabs", self.window_text_color);
+        y = draw_tabs(frame, m, y + gap, w, self);
 
         // — Slider —
-        y = section_label(&mut frame, m, y + gap, w, "Slider", self.window_text_color);
-        y = draw_slider(&mut frame, m, y + gap, w, self);
+        y = section_label(frame, m, y + gap, w, "Slider", self.window_text_color);
+        y = draw_slider(frame, m, y + gap, w, self);
 
         // — Progress Bar —
-        y = section_label(&mut frame, m, y + gap, w, "Progress Bar", self.window_text_color);
-        y = draw_progress_bar(&mut frame, m, y + gap, w, self);
+        y = section_label(frame, m, y + gap, w, "Progress Bar", self.window_text_color);
+        y = draw_progress_bar(frame, m, y + gap, w, self);
 
         // — Combo with arrow —
-        y = section_label(&mut frame, m, y + gap, w, "ComboBox", self.window_text_color);
-        y = draw_combobox(&mut frame, m, y + gap, w, self);
+        y = section_label(frame, m, y + gap, w, "ComboBox", self.window_text_color);
+        y = draw_combobox(frame, m, y + gap, w, self);
 
         // — Tooltip —
-        y = section_label(&mut frame, m, y + gap, w, "Tooltip", self.window_text_color);
-        y = draw_tooltip(&mut frame, m, y + gap, self);
+        y = section_label(frame, m, y + gap, w, "Tooltip", self.window_text_color);
+        y = draw_tooltip(frame, m, y + gap, self);
 
         // — Splitter —
-        y = section_label(&mut frame, m, y + gap, w, "Splitter", self.window_text_color);
-        y = draw_splitter(&mut frame, m, y + gap, w, self);
+        y = section_label(frame, m, y + gap, w, "Splitter", self.window_text_color);
+        y = draw_splitter(frame, m, y + gap, w, self);
 
         // — Icons —
-        y = section_label(&mut frame, m, y + gap, w, "Icons", self.window_text_color);
-        y = draw_icons(&mut frame, m, y + gap, self);
+        y = section_label(frame, m, y + gap, w, "Icons", self.window_text_color);
+        y = draw_icons(frame, m, y + gap, self);
 
         // — Disabled & Links —
-        y = section_label(&mut frame, m, y + gap, w, "Other", self.window_text_color);
-        y = draw_misc_text(&mut frame, m, y + gap, self);
+        y = section_label(frame, m, y + gap, w, "Other", self.window_text_color);
+        y = draw_misc_text(frame, m, y + gap, self);
 
         // — General settings status —
-        draw_general_status(&mut frame, m, y + gap, self);
+        draw_general_status(frame, m, y + gap, self);
 
         // — Scrollbar —
-        draw_scrollbar(&mut frame, bounds.width, bounds.height, self);
-
-        vec![frame.into_geometry()]
+        draw_scrollbar(frame, bounds.width, bounds.height, self);
+        });
+        vec![geometry]
     }
 }
 
