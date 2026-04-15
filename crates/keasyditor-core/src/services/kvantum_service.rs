@@ -11,6 +11,31 @@ use crate::ini::{parse_ini, serialize_ini, IniDocument};
 use crate::models::kvantum::KvantumConfig;
 use crate::services::file_service::FileService;
 
+/// Default palette written into new themes' `[GeneralColors]` section.
+/// Mirrors upstream KvFlat so a freshly-created theme renders consistently
+/// under both the internal preview and the real Kvantum Qt plugin.
+const DEFAULT_GENERAL_COLORS: &[(&str, &str)] = &[
+    ("window.color", "#3D3D3E"),
+    ("base.color", "#2E2E2E"),
+    ("alt.base.color", "#383838"),
+    ("button.color", "#555555"),
+    ("light.color", "#626262"),
+    ("mid.light.color", "#555555"),
+    ("dark.color", "#171717"),
+    ("mid.color", "#3C3C3C"),
+    ("highlight.color", "#3F67A5"),
+    ("inactive.highlight.color", "#2E4C7A"),
+    ("text.color", "#FFFFFF"),
+    ("window.text.color", "#FFFFFF"),
+    ("button.text.color", "#FFFFFF"),
+    ("disabled.text.color", "#A0A0A0"),
+    ("tooltip.text.color", "#FFFFFF"),
+    ("highlight.text.color", "#FFFFFF"),
+    ("link.color", "#2EB8E6"),
+    ("link.visited.color", "#FF6666"),
+    ("progress.indicator.text.color", "#FFFFFF"),
+];
+
 /// Walk `system_dirs` looking for `<subdir>/<subdir>.svg` pairs and return
 /// the first match (alphabetical by subdirectory name). Falls back to the
 /// bundled `KvFlat.svg` if nothing is found.
@@ -161,6 +186,9 @@ impl KvantumService {
             "comment",
             "Created by KEasyDitor".to_string(),
         );
+        for (key, value) in DEFAULT_GENERAL_COLORS {
+            doc.set_value("GeneralColors", key, (*value).to_string());
+        }
         let content = serialize_ini(&doc);
         self.file_service.write_file(&kvconfig_path, &content)?;
 
@@ -308,6 +336,14 @@ mod tests {
         assert!(
             kvconfig_content.contains("[%General]"),
             "kvconfig should contain [%General] section"
+        );
+        assert!(
+            kvconfig_content.contains("[GeneralColors]"),
+            "kvconfig should contain [GeneralColors] section"
+        );
+        assert!(
+            kvconfig_content.contains("highlight.color=#3F67A5"),
+            "kvconfig should contain default highlight color"
         );
 
         let svg_content = fs.read_file(&svg).unwrap();

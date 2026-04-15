@@ -933,7 +933,12 @@ impl App {
                                     Message::Kvantum(KvantumMessage::ThemesDiscovered(themes))
                                 },
                             );
-                            return Task::batch([load_task, discover_task]);
+                            // Apply the freshly-created theme system-wide so
+                            // it becomes the active Kvantum theme immediately.
+                            let apply_task = self.update(Message::Kvantum(
+                                KvantumMessage::ApplySystemTheme(name.clone()),
+                            ));
+                            return Task::batch([load_task, discover_task, apply_task]);
                         }
                         Err(e) => {
                             self.kvantum_error =
@@ -1532,6 +1537,16 @@ impl App {
     /// Sync UI slider/toggle values from the loaded Kvantum config.
     fn sync_kvantum_ui_from_config(&mut self) {
         if let Some(config) = &self.kvantum_config {
+            // Clear per-theme state so values from the previously-loaded theme
+            // don't leak through when the new theme has fewer keys set.
+            self.text_input_values.retain(|k, _| {
+                !k.starts_with("kvantum.color.")
+                    && !k.starts_with("kvantum.widget.")
+                    && !k.starts_with("color.kvantum.color.")
+            });
+            self.slider_values
+                .retain(|k, _| !k.starts_with("color.kvantum.color."));
+
             // General sliders
             self.slider_values.insert("kvantum.window_opacity_reduction".into(), config.general.reduce_window_opacity() as f32);
             self.slider_values.insert("kvantum.reduce_opacity".into(), config.general.reduce_menu_opacity() as f32);
