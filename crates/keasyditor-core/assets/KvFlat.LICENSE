@@ -1,0 +1,12 @@
+KvFlat.svg
+==========
+Source:  https://github.com/tsujan/Kvantum
+Author:  Pedram Pourang (tsujan) and contributors
+License: GNU Lesser General Public License v2.1 or later (LGPL-2.1+)
+
+This file is redistributed verbatim and unmodified from the Kvantum project.
+It is bundled inside KEasyDitor solely as a last-resort fallback SVG template
+for newly created Kvantum themes, used only when no Kvantum themes are
+installed at the system level (/usr/share/Kvantum/).
+
+Full license text: https://github.com/tsujan/Kvantum/blob/master/LICENSE

@@ -39,7 +39,7 @@
 Скачайте пакет для своего дистрибутива из [последнего релиза](https://github.com/BergaBruh/keasyditor/releases/latest):
 
 | Дистрибутив | Пакет |
-|---|---|
+| --- | --- |
 | Debian 13 | `keasyditor_*_amd64.deb` |
 | Ubuntu 24.04+ | `keasyditor_*_amd64.deb` |
 | Fedora 40+ | `keasyditor-*.x86_64.rpm` |
@@ -94,9 +94,17 @@ make package-fedora                      # только Fedora
 ## Расположение файлов
 
 | Данные | Путь |
-|---|---|
+| --- | --- |
 | Настройки (`auto_apply`) | `~/.config/keasyditor/settings.ini` |
 | Последние файлы | `~/.cache/keasyditor/recent_files` |
 | Конфиг Klassy | `~/.config/klassy/klassyrc` |
 | Темы Kvantum | `~/.config/Kvantum/` |
 
+---
+
+## Сторонние ассеты
+
+KEasyDitor включает несколько ассетов из upstream-проектов. Каждый распространяется без изменений под оригинальной лицензией:
+
+- **[KvFlat.svg](../crates/keasyditor-core/assets/KvFlat.svg)** - базовый шаблон Kvantum, используется как резервный, если в системе не установлена ни одна тема Kvantum. Из [tsujan/Kvantum](https://github.com/tsujan/Kvantum), автор Pedram Pourang, лицензия **LGPL-2.1-or-later**. См. [KvFlat.LICENSE](../crates/keasyditor-core/assets/KvFlat.LICENSE).
+- **[JetBrains Mono](../crates/keasyditor/assets/fonts/)** - шрифт интерфейса. Из [JetBrains/JetBrainsMono](https://github.com/JetBrains/JetBrainsMono), лицензия **SIL Open Font License 1.1**. См. [OFL.txt](../crates/keasyditor/assets/fonts/OFL.txt).

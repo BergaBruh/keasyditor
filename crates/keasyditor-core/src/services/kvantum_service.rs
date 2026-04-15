@@ -2,13 +2,48 @@
 ///
 /// Handles loading, saving, creating, and cloning Kvantum themes, as well as
 /// reading and writing the global active-theme setting.
+use std::collections::BTreeMap;
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::constants;
 use crate::ini::{parse_ini, serialize_ini, IniDocument};
 use crate::models::kvantum::KvantumConfig;
 use crate::services::file_service::FileService;
+
+/// Walk `system_dirs` looking for `<subdir>/<subdir>.svg` pairs and return
+/// the first match (alphabetical by subdirectory name). Falls back to the
+/// bundled `KvFlat.svg` if nothing is found.
+fn find_base_template_svg_in(system_dirs: &[PathBuf], file_svc: &FileService) -> Option<String> {
+    let mut candidates: BTreeMap<String, String> = BTreeMap::new();
+    for dir in system_dirs {
+        let dir_str = dir.to_string_lossy();
+        let entries = match file_svc.list_directory(&dir_str) {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+        for entry_path in entries {
+            if !file_svc.directory_exists(&entry_path) {
+                continue;
+            }
+            let name = match Path::new(&entry_path).file_name().and_then(|n| n.to_str()) {
+                Some(n) => n.to_string(),
+                None => continue,
+            };
+            let svg_path = format!("{}/{}.svg", entry_path, name);
+            if !file_svc.file_exists(&svg_path) {
+                continue;
+            }
+            candidates.entry(name).or_insert(svg_path);
+        }
+    }
+    if let Some((_, svg_path)) = candidates.into_iter().next()
+        && let Ok(content) = file_svc.read_file(&svg_path)
+    {
+        return Some(content);
+    }
+    Some(include_str!("../../assets/KvFlat.svg").to_string())
+}
 
 /// Container for a fully loaded Kvantum theme.
 #[derive(Clone, Debug)]
@@ -104,16 +139,16 @@ impl KvantumService {
     // Theme management
     // --------------------------------------------------------------------------
 
-    /// Create a new empty Kvantum theme named `name`.
-    pub fn create_theme(&self, name: &str) -> io::Result<String> {
-        let theme_dir_path = format!(
-            "{}/{}",
-            constants::kvantum_config_dir().to_string_lossy(),
-            name
-        );
-        let kvconfig_path = format!("{}/{}.kvconfig", theme_dir_path, name);
+    fn find_base_template_svg(&self) -> Option<String> {
+        find_base_template_svg_in(&[constants::kvantum_system_dir()], &self.file_service)
+    }
 
-        self.file_service.create_directory(&theme_dir_path)?;
+    fn create_theme_at(&self, base_dir: &Path, name: &str) -> io::Result<String> {
+        let theme_dir = base_dir.join(name);
+        let theme_dir_str = theme_dir.to_string_lossy().into_owned();
+        let kvconfig_path = format!("{}/{}.kvconfig", theme_dir_str, name);
+
+        self.file_service.create_directory(&theme_dir_str)?;
 
         let mut doc = IniDocument {
             header_lines: Vec::new(),
@@ -129,7 +164,17 @@ impl KvantumService {
         let content = serialize_ini(&doc);
         self.file_service.write_file(&kvconfig_path, &content)?;
 
-        Ok(theme_dir_path)
+        if let Some(svg) = self.find_base_template_svg() {
+            let svg_path = format!("{}/{}.svg", theme_dir_str, name);
+            self.file_service.write_file(&svg_path, &svg)?;
+        }
+
+        Ok(theme_dir_str)
+    }
+
+    /// Create a new empty Kvantum theme named `name`.
+    pub fn create_theme(&self, name: &str) -> io::Result<String> {
+        self.create_theme_at(&constants::kvantum_config_dir(), name)
     }
 
     // --------------------------------------------------------------------------
@@ -195,5 +240,96 @@ mod tests {
         assert!(theme.svg_content.is_none()); // no SVG in fixture
         assert_eq!(theme.config.general.author(), "Custom");
         assert!(theme.config.general.composite());
+    }
+
+    #[test]
+    fn find_base_template_svg_in_picks_first_alphabetical() {
+        let fixture = PathBuf::from(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../test_fixtures/kvantum_system_fake"
+        ));
+        let svc = FileService::new();
+        let result = find_base_template_svg_in(&[fixture], &svc);
+        let content = result.expect("should return Some");
+        // FakeAlpha is alphabetically first AND has an svg sibling.
+        // FakeBeta has no svg (skipped). FakeGamma is later alphabetically.
+        assert!(
+            content.contains("#aabbcc"),
+            "expected FakeAlpha svg (containing #aabbcc), got: {}",
+            content
+        );
+        assert!(
+            !content.contains("#112233"),
+            "should NOT pick FakeGamma"
+        );
+    }
+
+    #[test]
+    fn find_base_template_svg_in_falls_back_to_bundled() {
+        let fixture = PathBuf::from(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../test_fixtures/kvantum_system_empty"
+        ));
+        let svc = FileService::new();
+        let result = find_base_template_svg_in(&[fixture], &svc);
+        let content = result.expect("should return bundled fallback");
+        let bundled = include_str!("../../assets/KvFlat.svg");
+        assert_eq!(content, bundled);
+    }
+
+    #[test]
+    fn find_base_template_svg_in_handles_missing_dir() {
+        let svc = FileService::new();
+        let result = find_base_template_svg_in(
+            &[PathBuf::from("/nonexistent/kvantum/path/xyz")],
+            &svc,
+        );
+        let content = result.expect("should return bundled fallback, not panic");
+        let bundled = include_str!("../../assets/KvFlat.svg");
+        assert_eq!(content, bundled);
+    }
+
+    #[test]
+    fn create_theme_at_writes_kvconfig_and_svg() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let svc = KvantumService::new(FileService::new());
+        let theme_path = svc
+            .create_theme_at(tmp.path(), "TestTheme")
+            .expect("create_theme_at should succeed");
+
+        let kvconfig = format!("{}/TestTheme.kvconfig", theme_path);
+        let svg = format!("{}/TestTheme.svg", theme_path);
+
+        let fs = FileService::new();
+        assert!(fs.file_exists(&kvconfig), "kvconfig should be written");
+        assert!(fs.file_exists(&svg), "svg should be written");
+
+        let kvconfig_content = fs.read_file(&kvconfig).unwrap();
+        assert!(
+            kvconfig_content.contains("[%General]"),
+            "kvconfig should contain [%General] section"
+        );
+
+        let svg_content = fs.read_file(&svg).unwrap();
+        assert!(!svg_content.is_empty(), "svg should not be empty");
+        assert!(
+            svg_content.contains("<svg") || svg_content.contains("<?xml"),
+            "svg should look like svg/xml content"
+        );
+    }
+
+    #[test]
+    fn bundled_kvflat_svg_is_valid() {
+        let bundled = include_str!("../../assets/KvFlat.svg");
+        assert!(!bundled.is_empty(), "bundled svg should not be empty");
+        assert!(
+            bundled.contains("<svg"),
+            "bundled svg should contain an <svg tag"
+        );
+        let ids = crate::svg::get_all_element_ids(bundled);
+        assert!(
+            !ids.is_empty(),
+            "bundled svg should parse into a non-empty id list"
+        );
     }
 }

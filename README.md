@@ -39,7 +39,7 @@ A visual editor for KDE Plasma themes - [Klassy](https://github.com/paulmcauley/
 Download the package for your distribution from the [latest release](https://github.com/BergaBruh/keasyditor/releases/latest):
 
 | Distribution | Package |
-|---|---|
+| --- | --- |
 | Debian 13 | `keasyditor_*_amd64.deb` |
 | Ubuntu 24.04+ | `keasyditor_*_amd64.deb` |
 | Fedora 40+ | `keasyditor-*.x86_64.rpm` |
@@ -94,9 +94,17 @@ Docker with BuildKit is required for package builds (Docker 23+ has it by defaul
 ## File locations
 
 | Data | Path |
-|---|---|
+| --- | --- |
 | Settings (`auto_apply`) | `~/.config/keasyditor/settings.ini` |
 | Recent files | `~/.cache/keasyditor/recent_files` |
 | Klassy config | `~/.config/klassy/klassyrc` |
 | Kvantum themes | `~/.config/Kvantum/` |
 
+---
+
+## Third-party assets
+
+KEasyDitor bundles a few assets from upstream projects. Each is redistributed unmodified under its original license:
+
+- **[KvFlat.svg](crates/keasyditor-core/assets/KvFlat.svg)** - base Kvantum template used as a fallback when no system Kvantum theme is installed. From [tsujan/Kvantum](https://github.com/tsujan/Kvantum) by Pedram Pourang, licensed under **LGPL-2.1-or-later**. See [KvFlat.LICENSE](crates/keasyditor-core/assets/KvFlat.LICENSE).
+- **[JetBrains Mono](crates/keasyditor/assets/fonts/)** - UI font. From [JetBrains/JetBrainsMono](https://github.com/JetBrains/JetBrainsMono), licensed under the **SIL Open Font License 1.1**. See [OFL.txt](crates/keasyditor/assets/fonts/OFL.txt).

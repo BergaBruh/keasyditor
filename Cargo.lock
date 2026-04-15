@@ -2186,6 +2186,7 @@ dependencies = [
  "serde_json",
  "sha1",
  "strum",
+ "tempfile",
 ]
 
 [[package]]
