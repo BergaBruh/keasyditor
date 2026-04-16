@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build packages for all supported distributions using Docker.
-# Run from the project root: bash packaging/build.sh [debian|ubuntu|fedora|archlinux]
+# Run from the project root: bash packaging/build.sh [debian|ubuntu|fedora|archlinux|appimage]
 #
 # Requires Docker with BuildKit support (Docker 23+ has it by default).
 # Output packages are placed in build/packages/.
@@ -9,7 +9,7 @@ set -euo pipefail
 VERSION="0.1.0"
 OUT_DIR="build/packages"
 
-DISTROS=(debian ubuntu fedora archlinux)
+DISTROS=(debian ubuntu fedora archlinux appimage)
 
 # If an argument is given, build only that distro
 if [[ $# -gt 0 ]]; then

@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        distro: [debian, ubuntu, fedora, archlinux]
+        distro: [debian, ubuntu, fedora, archlinux, appimage]
 
     permissions:
       contents: write

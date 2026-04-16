@@ -3,7 +3,7 @@ APP_DIR     := $(HOME)/.local/share/applications
 ICON_DIR    := $(HOME)/.local/share/icons/hicolor/scalable/apps
 BINARY      := target/release/keasyditor
 
-.PHONY: build install uninstall package package-debian package-ubuntu package-fedora package-archlinux
+.PHONY: build install uninstall package package-debian package-ubuntu package-fedora package-archlinux package-appimage
 
 build:
 	cargo build --release -p keasyditor
@@ -38,3 +38,6 @@ package-fedora:
 
 package-archlinux:
 	bash packaging/build.sh archlinux
+
+package-appimage:
+	bash packaging/build.sh appimage
